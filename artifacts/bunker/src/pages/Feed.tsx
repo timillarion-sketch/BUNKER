@@ -1,35 +1,71 @@
-import { Radio, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
+import { Radio, Lock } from "lucide-react";
+import { T } from "@/lib/constants";
 
 export default function Feed() {
   return (
-    <div className="min-h-screen pb-24 px-4 pt-12 flex flex-col">
-      <header className="mb-6">
-        <h2 className="text-sm font-tech tracking-[0.2em] text-muted-foreground mb-1">GLOBAL STREAM</h2>
-        <h1 className="text-3xl font-display font-bold text-white/50">FEED</h1>
-      </header>
-
-      <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
-        <motion.div
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 4, repeat: Infinity }}
-          className="mb-6 relative"
+    <div className="min-h-screen flex flex-col items-center justify-center pb-24 px-6 text-center" style={{ background: "#050508" }}>
+      {/* Decorative rings */}
+      <div className="relative mb-12">
+        {[1, 2, 3].map((i) => (
+          <motion.div
+            key={i}
+            animate={{ scale: [1, 1.4 + i * 0.25, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.6, ease: "easeOut" }}
+            className="absolute rounded-full border"
+            style={{
+              inset: `${-i * 20}px`,
+              borderColor: `rgba(0,240,255,${0.15 - i * 0.04})`,
+            }}
+          />
+        ))}
+        <div
+          className="relative w-20 h-20 rounded-full flex items-center justify-center"
+          style={{
+            background: "rgba(0,240,255,0.08)",
+            border: "1px solid rgba(0,240,255,0.25)",
+            boxShadow: T.borderGlow("#00f0ff"),
+          }}
         >
-          <div className="absolute inset-0 bg-white/20 blur-xl rounded-full" />
-          <Radio className="w-20 h-20 text-white relative z-10" />
-        </motion.div>
-        
-        <h3 className="font-display text-2xl font-bold text-white tracking-widest uppercase mb-2">
-          Coming Soon
-        </h3>
-        <p className="font-tech text-sm text-white/60 tracking-[0.2em] max-w-[250px]">
-          FUTURE REELS MODULE CURRENTLY OFFLINE. AWAITING DEPLOYMENT.
-        </p>
-
-        <div className="mt-12 inline-flex items-center gap-2 px-4 py-2 border border-dashed border-white/20 text-xs font-tech text-white/40">
-          <AlertTriangle className="w-3 h-3" />
-          SECTION CLASSIFIED
+          <Radio className="w-9 h-9" style={{ color: "#00f0ff", filter: `drop-shadow(${T.glow("#00f0ff")})` }} />
         </div>
+      </div>
+
+      <h1
+        className="font-display font-black text-4xl tracking-wider uppercase text-white mb-3"
+        style={{ textShadow: T.glowText("#00f0ff") }}
+      >
+        Feed
+      </h1>
+      <p className="font-tech text-xs tracking-[0.3em] uppercase mb-6" style={{ color: "#00f0ff80" }}>
+        Incoming Transmission
+      </p>
+
+      <div
+        className="flex items-center gap-2 px-5 py-3 rounded-sm mb-4"
+        style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(0,240,255,0.15)" }}
+      >
+        <Lock className="w-4 h-4" style={{ color: "#00ff88" }} />
+        <span className="font-tech text-xs tracking-widest uppercase" style={{ color: "#00ff88" }}>
+          Private Reels — Coming Soon
+        </span>
+      </div>
+
+      <p className="font-sans text-xs text-gray-600 max-w-xs leading-relaxed">
+        An encrypted, zero-trace video feed is being prepared. All content will be decentralized and surveillance-proof.
+      </p>
+
+      {/* Blinking cursor */}
+      <div className="mt-10 flex items-center gap-1">
+        <span className="font-tech text-xs text-gray-700 tracking-widest">LOADING MODULE</span>
+        <motion.span
+          animate={{ opacity: [1, 0, 1] }}
+          transition={{ duration: 1.1, repeat: Infinity }}
+          className="font-tech text-xs"
+          style={{ color: "#00f0ff" }}
+        >
+          _
+        </motion.span>
       </div>
     </div>
   );

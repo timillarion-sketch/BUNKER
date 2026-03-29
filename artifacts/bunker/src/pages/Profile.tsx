@@ -1,131 +1,285 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { User, LogOut, Skull, Shield, Server, Edit3 } from "lucide-react";
-import { CyberButton } from "@/components/ui/cyber-button";
-import { motion } from "framer-motion";
+import { User, LogOut, Skull, Shield, Server, Edit3, Eye, Wifi, Bell, Lock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { T, API_BASE_URL } from "@/lib/constants";
 
-export default function Profile() {
-  const { logout, selfDestruct } = useAuth();
-  const [apiUrl, setApiUrl] = useState(localStorage.getItem('bunker_api_url') || 'https://api.bunker.local');
-  const [isEditingUrl, setIsEditingUrl] = useState(false);
+// ── Double-tap Destruct Button ────────────────────────────
+function DestructButton({ onConfirm }: { onConfirm: () => void }) {
+  const [phase, setPhase] = useState<"idle" | "armed" | "countdown">("idle");
+  const [count, setCount] = useState(3);
 
-  const saveApiUrl = () => {
-    localStorage.setItem('bunker_api_url', apiUrl);
-    setIsEditingUrl(false);
-    // In a real app, this would reconfigure the Axios/Fetch instance.
+  const handleClick = () => {
+    if (phase === "idle") {
+      setPhase("armed");
+      setTimeout(() => setPhase("idle"), 4000);
+    } else if (phase === "armed") {
+      setPhase("countdown");
+      let c = 3;
+      setCount(c);
+      const iv = setInterval(() => {
+        c -= 1;
+        setCount(c);
+        if (c === 0) {
+          clearInterval(iv);
+          onConfirm();
+        }
+      }, 600);
+    }
   };
 
   return (
-    <div className="min-h-screen pb-24 px-4 pt-12">
+    <motion.button
+      onClick={handleClick}
+      whileTap={{ scale: 0.96 }}
+      className="w-full py-4 font-display font-bold tracking-[0.2em] text-sm uppercase transition-all rounded-sm flex items-center justify-center gap-3"
+      style={{
+        background: phase === "idle" ? "rgba(255,51,102,0.08)" : "rgba(255,51,102,0.18)",
+        border: `1px solid ${phase === "idle" ? "rgba(255,51,102,0.3)" : "rgba(255,51,102,0.7)"}`,
+        color: "#ff3366",
+        boxShadow: phase !== "idle" ? T.glow("#ff3366") : undefined,
+      }}
+    >
+      <Skull className={`w-5 h-5 ${phase === "countdown" ? "animate-bounce" : ""}`} />
+      {phase === "idle" && "SELF-DESTRUCT"}
+      {phase === "armed" && "TAP AGAIN TO CONFIRM"}
+      {phase === "countdown" && `DETONATING IN ${count}...`}
+    </motion.button>
+  );
+}
+
+// ── Toggle row ────────────────────────────────────────────
+function ToggleRow({
+  icon: Icon,
+  label,
+  description,
+  value,
+  onChange,
+  neon = "#00f0ff",
+}: {
+  icon: any;
+  label: string;
+  description: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+  neon?: string;
+}) {
+  return (
+    <div className="flex items-start gap-4 py-3">
+      <div className="mt-0.5 shrink-0">
+        <Icon className="w-4 h-4" style={{ color: value ? neon : "#444" }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-tech text-xs uppercase tracking-wider text-white">{label}</p>
+        <p className="font-sans text-[10px] text-gray-600 mt-0.5 leading-snug">{description}</p>
+      </div>
+      {/* Toggle */}
+      <button
+        onClick={() => onChange(!value)}
+        className="shrink-0 relative w-11 h-6 rounded-full transition-all duration-300"
+        style={{
+          background: value ? `${neon}25` : "rgba(255,255,255,0.06)",
+          border: `1px solid ${value ? `${neon}50` : "rgba(255,255,255,0.1)"}`,
+          boxShadow: value ? T.glow(neon) : undefined,
+        }}
+      >
+        <motion.div
+          animate={{ x: value ? 20 : 2 }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="absolute top-1 w-4 h-4 rounded-full"
+          style={{ background: value ? neon : "#555", boxShadow: value ? T.glow(neon) : undefined }}
+        />
+      </button>
+    </div>
+  );
+}
+
+export default function Profile() {
+  const { logout, selfDestruct } = useAuth();
+  const [apiUrl, setApiUrl] = useState(localStorage.getItem("bunker_api_url") || API_BASE_URL);
+  const [editingUrl, setEditingUrl] = useState(false);
+
+  // Privacy toggles
+  const [vpn, setVpn] = useState(true);
+  const [tor, setTor] = useState(false);
+  const [notifications, setNotifications] = useState(false);
+  const [screenshots, setScreenshots] = useState(false);
+
+  const saveUrl = () => {
+    localStorage.setItem("bunker_api_url", apiUrl);
+    setEditingUrl(false);
+  };
+
+  return (
+    <div className="min-h-screen pb-28 px-4 pt-12 no-scrollbar overflow-y-auto">
+      {/* Header */}
       <header className="mb-8 flex justify-between items-start">
         <div>
-          <h2 className="text-sm font-tech tracking-[0.2em] text-primary mb-1">OPERATIVE</h2>
-          <h1 className="text-3xl font-display font-bold">PROFILE</h1>
+          <p className="font-tech text-xs tracking-[0.3em] mb-1 uppercase" style={{ color: "#00f0ff", textShadow: T.glowText("#00f0ff") }}>
+            Operative
+          </p>
+          <h1 className="font-display font-black text-3xl tracking-wider uppercase text-white" style={{ textShadow: T.glowText("#00f0ff") }}>
+            Profile
+          </h1>
+          <div className="mt-3 h-[2px] w-14 rounded-full" style={{ background: "#00f0ff", boxShadow: T.glow("#00f0ff") }} />
         </div>
-        <button onClick={logout} className="p-2 border border-white/10 rounded bg-black/50 hover:bg-white/10 text-muted-foreground hover:text-white transition-colors">
-          <LogOut className="w-5 h-5" />
+        <button
+          onClick={logout}
+          className="flex items-center gap-1.5 px-3 py-2 text-gray-500 hover:text-white transition-colors rounded-sm font-tech text-xs uppercase tracking-wider"
+          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
         </button>
       </header>
 
-      <div className="space-y-8">
-        {/* User Card */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="p-6 glass rounded-2xl flex items-center gap-6"
+      <div className="space-y-6">
+        {/* User card */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 flex items-center gap-5 rounded-sm"
+          style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(0,240,255,0.15)", backdropFilter: "blur(12px)" }}
         >
           <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary p-[2px]">
-              <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden">
-                <User className="w-10 h-10 text-white/50" />
+            <div
+              className="w-18 h-18 rounded-sm p-[2px]"
+              style={{ background: "linear-gradient(135deg, #00f0ff, #ff00cc)" }}
+            >
+              <div className="w-full h-full rounded-sm bg-black flex items-center justify-center" style={{ width: 68, height: 68 }}>
+                <User className="w-9 h-9 text-white/40" />
               </div>
             </div>
-            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-black shadow-[0_0_10px_rgba(34,197,94,1)]" />
+            <div
+              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-black"
+              style={{ background: "#00ff88", boxShadow: T.glow("#00ff88") }}
+            />
           </div>
           <div>
-            <h2 className="font-display text-2xl font-bold text-white mb-1">GHOST_USER</h2>
-            <p className="font-tech text-xs text-muted-foreground uppercase tracking-widest">ID: {Math.random().toString(36).substr(2, 8).toUpperCase()}</p>
+            <h2 className="font-display font-bold text-xl text-white uppercase tracking-wider mb-1">GHOST_USER</h2>
+            <p className="font-tech text-[10px] text-gray-500 uppercase tracking-widest">
+              ID: {Math.random().toString(36).substring(2, 10).toUpperCase()}
+            </p>
           </div>
         </motion.div>
 
-        {/* Verification */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="space-y-4"
+        {/* Identity verification */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-sm overflow-hidden"
+          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <h3 className="font-tech text-sm text-primary uppercase tracking-widest flex items-center gap-2">
-            <Shield className="w-4 h-4" /> Identity Verification
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <CyberButton variant="glass" disabled className="opacity-50">
-              VK ID (LINKED)
-            </CyberButton>
-            <CyberButton variant="glass" disabled className="opacity-50">
-              YANDEX (LINKED)
-            </CyberButton>
+          <div className="px-4 pt-4 pb-3 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+            <Shield className="w-4 h-4" style={{ color: "#00f0ff" }} />
+            <span className="font-tech text-[10px] uppercase tracking-widest text-gray-400">Identity Verification</span>
           </div>
-        </motion.div>
-
-        {/* Settings */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="space-y-4"
-        >
-          <h3 className="font-tech text-sm text-secondary uppercase tracking-widest flex items-center gap-2">
-            <Server className="w-4 h-4" /> System Configuration
-          </h3>
-          
-          <div className="p-4 bg-black/40 border border-white/10 rounded-lg">
-            <div className="flex justify-between items-center mb-3">
-              <label className="text-xs font-tech text-white uppercase tracking-wider">API Endpoint</label>
-              <button onClick={() => setIsEditingUrl(!isEditingUrl)} className="text-primary hover:text-primary/80">
-                <Edit3 className="w-4 h-4" />
+          <div className="grid grid-cols-2 gap-3 p-4">
+            {["VK ID — LINKED", "YANDEX ID — LINKED"].map((label, i) => (
+              <button
+                key={i}
+                disabled
+                className="py-3 font-tech text-xs uppercase tracking-wider opacity-40 rounded-sm"
+                style={{ background: "rgba(0,240,255,0.05)", border: "1px solid rgba(0,240,255,0.15)", color: "#00f0ff" }}
+              >
+                {label}
               </button>
-            </div>
-            {isEditingUrl ? (
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={apiUrl} 
-                  onChange={(e) => setApiUrl(e.target.value)}
-                  className="flex-1 bg-black border border-primary/50 px-3 py-2 text-sm text-primary font-tech focus:outline-none"
-                />
-                <CyberButton size="sm" onClick={saveApiUrl}>SAVE</CyberButton>
-              </div>
-            ) : (
-              <p className="font-mono text-sm text-muted-foreground truncate">{apiUrl}</p>
-            )}
+            ))}
           </div>
         </motion.div>
 
-        {/* Danger Zone */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="pt-8 border-t border-destructive/20"
+        {/* Privacy toggles */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="rounded-sm overflow-hidden"
+          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <div className="p-6 bg-destructive/5 border border-destructive/30 rounded-xl">
-            <div className="flex items-start gap-4 mb-6">
-              <div className="p-3 bg-destructive/20 rounded-full text-destructive">
-                <Skull className="w-6 h-6" />
+          <div className="px-4 pt-4 pb-3 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+            <Lock className="w-4 h-4" style={{ color: "#ff00cc" }} />
+            <span className="font-tech text-[10px] uppercase tracking-widest text-gray-400">Privacy Controls</span>
+          </div>
+          <div className="px-4 divide-y" style={{ borderColor: "rgba(255,255,255,0.03)" }}>
+            <ToggleRow icon={Wifi}  label="VPN Tunnel"     description="Route all traffic through encrypted tunnel"            value={vpn}           onChange={setVpn}           neon="#00ff88" />
+            <ToggleRow icon={Eye}   label="TOR Routing"    description="Anonymize through Tor onion network"                 value={tor}           onChange={setTor}           neon="#00f0ff" />
+            <ToggleRow icon={Bell}  label="Notifications"  description="System-level push alerts (disabled for stealth mode)" value={notifications} onChange={setNotifications} neon="#ffd700" />
+            <ToggleRow icon={User}  label="Screenshots"    description="Allow external screenshot capture of the app"        value={screenshots}   onChange={setScreenshots}   neon="#bf00ff" />
+          </div>
+        </motion.div>
+
+        {/* API endpoint */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="p-4 rounded-sm"
+          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Server className="w-4 h-4" style={{ color: "#ff00cc" }} />
+              <span className="font-tech text-[10px] uppercase tracking-widest text-gray-400">API Endpoint</span>
+            </div>
+            <button onClick={() => setEditingUrl(!editingUrl)} className="text-gray-600 hover:text-white transition-colors">
+              <Edit3 className="w-4 h-4" />
+            </button>
+          </div>
+          <AnimatePresence mode="wait">
+            {editingUrl ? (
+              <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-2">
+                <input
+                  type="text"
+                  value={apiUrl}
+                  onChange={(e) => setApiUrl(e.target.value)}
+                  className="flex-1 bg-black px-3 py-2 text-sm font-mono focus:outline-none"
+                  style={{ border: "1px solid rgba(0,240,255,0.4)", color: "#00f0ff", caretColor: "#00f0ff" }}
+                />
+                <button
+                  onClick={saveUrl}
+                  className="px-4 py-2 font-tech text-xs uppercase tracking-wider"
+                  style={{ background: "rgba(0,240,255,0.1)", border: "1px solid rgba(0,240,255,0.4)", color: "#00f0ff" }}
+                >
+                  SAVE
+                </button>
+              </motion.div>
+            ) : (
+              <motion.p key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="font-mono text-xs text-gray-500 truncate">
+                {apiUrl}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* Danger zone — Self-Destruct */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="pt-2"
+        >
+          <div
+            className="p-5 rounded-sm"
+            style={{ background: "rgba(255,51,102,0.04)", border: "1px solid rgba(255,51,102,0.2)" }}
+          >
+            <div className="flex items-start gap-4 mb-5">
+              <div
+                className="p-2.5 rounded-sm"
+                style={{ background: "rgba(255,51,102,0.12)", border: "1px solid rgba(255,51,102,0.3)" }}
+              >
+                <Skull className="w-5 h-5" style={{ color: "#ff3366" }} />
               </div>
               <div>
-                <h3 className="font-display text-destructive font-bold text-lg mb-1">SELF-DESTRUCT</h3>
-                <p className="text-xs font-sans text-destructive/70">
-                  Wipes all local cache, resets app state, and scrubs stored keys. Action cannot be undone.
+                <h3 className="font-display font-bold text-base uppercase tracking-wider mb-1" style={{ color: "#ff3366", textShadow: T.glowText("#ff3366") }}>
+                  Protocol Zero
+                </h3>
+                <p className="font-sans text-[11px] text-red-900 leading-relaxed">
+                  Wipes all local state, keys, cache, and session data. Double-tap to confirm. Cannot be undone.
                 </p>
               </div>
             </div>
-            
-            <CyberButton 
-              variant="destructive" 
-              className="w-full"
-              onClick={() => {
-                if(confirm("INITIATE PROTOCOL ZERO? All local data will be erased.")) {
-                  selfDestruct();
-                }
-              }}
-            >
-              INITIATE PROTOCOL
-            </CyberButton>
+            <DestructButton onConfirm={selfDestruct} />
           </div>
         </motion.div>
       </div>

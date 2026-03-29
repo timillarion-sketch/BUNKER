@@ -1,59 +1,71 @@
 import { Link, useLocation } from "wouter";
 import { Users, Globe, MessageSquare, Radio, UserCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { NAV_ITEMS, T } from "@/lib/constants";
+
+const ICON_MAP: Record<string, any> = {
+  Users, Globe, MessageSquare, Radio, UserCircle,
+};
 
 export function BottomNav() {
   const [location] = useLocation();
 
-  const tabs = [
-    { name: "Lobby", path: "/", icon: Users },
-    { name: "Net", path: "/browser", icon: Globe },
-    { name: "Comms", path: "/chats", icon: MessageSquare },
-    { name: "Feed", path: "/feed", icon: Radio },
-    { name: "ID", path: "/profile", icon: UserCircle },
-  ];
-
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 glass-panel pb-safe">
-      <nav className="flex justify-around items-center h-16 px-2 max-w-md mx-auto relative">
-        {/* Animated indicator background */}
-        <div className="absolute inset-0 pointer-events-none flex justify-around">
-          {tabs.map((tab) => {
-            const isActive = location === tab.path || (tab.path !== "/" && location.startsWith(tab.path));
-            return (
-              <div key={`bg-${tab.path}`} className="flex-1 flex justify-center items-end pb-1">
-                {isActive && (
-                  <motion.div
-                    layoutId="nav-indicator"
-                    className="w-8 h-1 bg-primary rounded-full shadow-[0_0_10px_rgba(0,240,255,0.8)]"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
+    <div
+      className="fixed bottom-0 left-0 right-0 z-50"
+      style={{
+        background: "rgba(3,3,8,0.92)",
+        borderTop: "1px solid rgba(0,240,255,0.12)",
+        backdropFilter: "blur(20px)",
+        boxShadow: "0 -8px 30px rgba(0,0,0,0.5), 0 -1px 0 rgba(0,240,255,0.08)",
+      }}
+    >
+      <nav className="flex justify-around items-center h-16 max-w-md mx-auto px-2 relative">
+        {NAV_ITEMS.map((tab) => {
+          const isActive =
+            location === tab.path || (tab.path !== "/" && location.startsWith(tab.path));
+          const Icon = ICON_MAP[tab.icon];
+          const neon = "#00f0ff";
 
-        {tabs.map((tab) => {
-          const isActive = location === tab.path || (tab.path !== "/" && location.startsWith(tab.path));
-          const Icon = tab.icon;
-          
           return (
-            <Link key={tab.path} href={tab.path} className="flex-1 flex flex-col items-center justify-center py-2 relative group z-10">
-              <Icon 
-                className={cn(
-                  "w-6 h-6 mb-1 transition-all duration-300",
-                  isActive 
-                    ? "text-primary drop-shadow-[0_0_8px_rgba(0,240,255,0.8)] scale-110" 
-                    : "text-muted-foreground group-hover:text-primary/70"
-                )} 
+            <Link
+              key={tab.path}
+              href={tab.path}
+              className="flex-1 flex flex-col items-center justify-center py-2 relative group"
+            >
+              {/* Active indicator bar */}
+              {isActive && (
+                <motion.div
+                  layoutId="nav-bar"
+                  className="absolute top-0 inset-x-3 h-[2px] rounded-full"
+                  style={{ background: neon, boxShadow: T.glow(neon) }}
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+
+              {/* Active bg glow */}
+              {isActive && (
+                <motion.div
+                  layoutId="nav-glow"
+                  className="absolute inset-0 rounded-sm pointer-events-none"
+                  style={{ background: `radial-gradient(ellipse at 50% 0%, ${neon}12 0%, transparent 70%)` }}
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+
+              <Icon
+                className="w-6 h-6 mb-1 transition-all duration-200 z-10"
+                style={{
+                  color: isActive ? neon : "#444",
+                  filter: isActive ? `drop-shadow(${T.glow(neon)})` : undefined,
+                  transform: isActive ? "scale(1.1)" : undefined,
+                }}
               />
-              <span className={cn(
-                "text-[10px] font-tech font-bold uppercase tracking-wider transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}>
-                {tab.name}
+              <span
+                className="font-tech text-[9px] uppercase tracking-widest z-10 transition-colors duration-200"
+                style={{ color: isActive ? neon : "#333" }}
+              >
+                {tab.label}
               </span>
             </Link>
           );

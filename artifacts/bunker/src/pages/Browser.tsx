@@ -1,174 +1,308 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useAnalyzePage } from "@workspace/api-client-react";
-import { Brain, Search, X, Shield, ShieldAlert, ShieldCheck, ChevronRight } from "lucide-react";
+import { Brain, Search, X, ShieldAlert, ShieldCheck, Shield, Wifi, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { T } from "@/lib/constants";
+
+// ── Mock privacy state (static for demo) ─────────────────
+const PRIVACY = {
+  vpn: true,
+  tor: false,
+  trackers: 7,
+};
+
+function PrivacyBar({ url }: { url: string }) {
+  const riskColor = PRIVACY.trackers > 5 ? "#ff3366" : PRIVACY.trackers > 2 ? "#ffd700" : "#00ff88";
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-tech uppercase tracking-widest overflow-x-auto no-scrollbar"
+      style={{ background: "rgba(0,0,0,0.6)", borderBottom: "1px solid rgba(0,240,255,0.1)" }}
+    >
+      {/* VPN */}
+      <div
+        className="flex items-center gap-1 px-2 py-0.5 rounded-sm shrink-0"
+        style={{
+          background: PRIVACY.vpn ? "rgba(0,255,136,0.1)" : "rgba(255,51,102,0.1)",
+          border: `1px solid ${PRIVACY.vpn ? "#00ff88" : "#ff3366"}30`,
+          color: PRIVACY.vpn ? "#00ff88" : "#ff3366",
+        }}
+      >
+        <Wifi className="w-3 h-3" />
+        <span>VPN {PRIVACY.vpn ? "ON" : "OFF"}</span>
+      </div>
+
+      {/* TOR */}
+      <div
+        className="flex items-center gap-1 px-2 py-0.5 rounded-sm shrink-0"
+        style={{
+          background: PRIVACY.tor ? "rgba(0,240,255,0.1)" : "rgba(80,80,80,0.1)",
+          border: `1px solid ${PRIVACY.tor ? "#00f0ff" : "#444"}30`,
+          color: PRIVACY.tor ? "#00f0ff" : "#666",
+        }}
+      >
+        <Eye className="w-3 h-3" />
+        <span>TOR {PRIVACY.tor ? "ON" : "OFF"}</span>
+      </div>
+
+      {/* Trackers */}
+      <div
+        className="flex items-center gap-1 px-2 py-0.5 rounded-sm shrink-0"
+        style={{
+          background: `${riskColor}10`,
+          border: `1px solid ${riskColor}30`,
+          color: riskColor,
+        }}
+      >
+        <EyeOff className="w-3 h-3" />
+        <span>{PRIVACY.trackers} TRACKERS</span>
+      </div>
+
+      {/* Current domain */}
+      <div className="ml-auto shrink-0 text-gray-600 font-mono truncate max-w-[100px]">
+        {(() => { try { return new URL(url).hostname; } catch { return url; } })()}
+      </div>
+    </div>
+  );
+}
 
 export default function Browser() {
   const [url, setUrl] = useState("https://en.wikipedia.org/wiki/Cyberpunk");
   const [inputUrl, setInputUrl] = useState(url);
   const [showSheet, setShowSheet] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
   const analyzeMutation = useAnalyzePage();
 
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault();
-    let finalUrl = inputUrl;
-    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-      finalUrl = 'https://' + finalUrl;
-    }
-    setUrl(finalUrl);
-    setInputUrl(finalUrl);
+    let final = inputUrl.trim();
+    if (!final.startsWith("http://") && !final.startsWith("https://")) final = "https://" + final;
+    setUrl(final);
+    setInputUrl(final);
   };
 
   const handleAnalyze = () => {
     setShowSheet(true);
-    analyzeMutation.mutate({
-      data: { url: url }
-    });
+    analyzeMutation.mutate({ data: { url } });
   };
 
+  const risk = analyzeMutation.data?.privacyRisk;
+
   return (
-    <div className="flex flex-col h-screen bg-black pb-16"> {/* pb-16 for BottomNav */}
-      {/* Custom URL Bar */}
-      <form onSubmit={handleNavigate} className="p-3 glass-panel border-b border-primary/20 flex gap-2 items-center z-10 sticky top-0">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/50" />
-          <input 
-            type="text" 
-            value={inputUrl}
-            onChange={(e) => setInputUrl(e.target.value)}
-            className="w-full bg-black/60 border border-primary/30 px-10 py-2 text-sm text-white font-tech tracking-wide focus:outline-none focus:border-primary transition-colors rounded-sm"
-          />
-        </div>
+    <div className="flex flex-col h-screen pb-16" style={{ background: "#050508" }}>
+      {/* URL bar */}
+      <form
+        onSubmit={handleNavigate}
+        className="flex items-center gap-2 px-3 py-2 z-10 sticky top-0"
+        style={{ background: "rgba(5,5,10,0.95)", borderBottom: "1px solid rgba(0,240,255,0.15)", backdropFilter: "blur(16px)" }}
+      >
+        <Search className="w-4 h-4 shrink-0" style={{ color: "#00f0ff" }} />
+        <input
+          type="text"
+          value={inputUrl}
+          onChange={(e) => setInputUrl(e.target.value)}
+          className="flex-1 bg-transparent text-sm font-tech text-white tracking-wide focus:outline-none"
+          placeholder="https://..."
+          style={{ caretColor: "#00f0ff" }}
+        />
+        <button
+          type="submit"
+          className="shrink-0 p-1.5 transition-colors"
+          style={{ color: "#00f0ff" }}
+        >
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </form>
 
-      {/* Webview Area */}
-      <div className="flex-1 relative bg-black">
-        {/* Placeholder background when loading or iframe fails */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-          <GlobeWireframe />
-        </div>
-        
-        <iframe 
-          ref={iframeRef}
-          src={url} 
+      {/* Privacy status bar */}
+      <PrivacyBar url={url} />
+
+      {/* Webview */}
+      <div className="flex-1 relative">
+        {/* Decorative grid when iframe can't load */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{
+            backgroundImage: "linear-gradient(#00f0ff55 1px, transparent 1px), linear-gradient(90deg, #00f0ff55 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
+          }}
+        />
+        <iframe
+          src={url}
           className="w-full h-full border-none relative z-10 bg-white"
-          sandbox="allow-scripts allow-same-origin"
-          title="Bunker AI Browser"
-          onError={() => console.log("Iframe load error - normal for many sites due to X-Frame-Options")}
+          sandbox="allow-scripts allow-same-origin allow-forms"
+          title="BUNKER AI Browser"
         />
 
-        {/* Floating Action Button */}
+        {/* Glowing FAB */}
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.92 }}
           onClick={handleAnalyze}
-          className="absolute bottom-6 right-6 z-20 w-14 h-14 bg-secondary text-white rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(255,0,255,0.6)] border border-white/20 hover:bg-secondary/90 transition-colors group overflow-hidden"
+          className="absolute bottom-6 right-5 z-20 w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
+          style={{
+            background: "rgba(255,0,204,0.15)",
+            border: "1px solid rgba(255,0,204,0.5)",
+            boxShadow: T.glowStrong("#ff00cc"),
+          }}
         >
-          <div className="absolute inset-0 bg-white/20 animate-ping" style={{ animationDuration: '3s' }} />
-          <Brain className="w-6 h-6 relative z-10 group-hover:rotate-12 transition-transform" />
+          {/* Ping ring */}
+          <motion.div
+            animate={{ scale: [1, 1.8, 1], opacity: [0.4, 0, 0.4] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
+            className="absolute inset-0 rounded-full"
+            style={{ border: "1px solid rgba(255,0,204,0.4)" }}
+          />
+          <Brain className="w-6 h-6 relative z-10" style={{ color: "#ff00cc", filter: `drop-shadow(${T.glow("#ff00cc")})` }} />
         </motion.button>
       </div>
 
-      {/* Analysis Bottom Sheet */}
+      {/* Analysis bottom sheet */}
       <AnimatePresence>
         {showSheet && (
           <>
-            <motion.div 
+            <motion.div
+              key="backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowSheet(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
             />
             <motion.div
+              key="sheet"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 z-50 glass-panel border-t border-primary/40 rounded-t-2xl max-h-[85vh] overflow-y-auto pb-safe shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
+              transition={{ type: "spring", damping: 28, stiffness: 220 }}
+              className="fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-y-auto no-scrollbar rounded-t-2xl"
+              style={{
+                background: "rgba(5,5,10,0.97)",
+                borderTop: "1px solid rgba(255,0,204,0.3)",
+                boxShadow: "-0px -20px 60px rgba(255,0,204,0.1)",
+                backdropFilter: "blur(24px)",
+              }}
             >
+              {/* Pull handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,0,204,0.3)" }} />
+              </div>
+
               <div className="p-6">
-                <div className="flex justify-between items-start mb-6">
+                {/* Sheet header */}
+                <div className="flex items-start justify-between mb-6">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-secondary/20 rounded-lg border border-secondary/50">
-                      <Brain className="w-6 h-6 text-secondary drop-shadow-[0_0_5px_rgba(255,0,255,0.8)]" />
+                    <div
+                      className="p-2.5 rounded-sm"
+                      style={{ background: "rgba(255,0,204,0.12)", border: "1px solid rgba(255,0,204,0.3)" }}
+                    >
+                      <Brain className="w-5 h-5" style={{ color: "#ff00cc", filter: `drop-shadow(${T.glow("#ff00cc")})` }} />
                     </div>
                     <div>
-                      <h3 className="font-display text-xl text-white">NEURAL ANALYSIS</h3>
-                      <p className="font-tech text-xs text-secondary uppercase tracking-widest">Target: {new URL(url).hostname}</p>
+                      <h3 className="font-display font-bold text-lg text-white uppercase tracking-wider">
+                        Neural Analysis
+                      </h3>
+                      <p className="font-tech text-[10px] tracking-widest uppercase" style={{ color: "#ff00cc80" }}>
+                        {(() => { try { return new URL(url).hostname; } catch { return url; } })()}
+                      </p>
                     </div>
                   </div>
-                  <button onClick={() => setShowSheet(false)} className="p-2 bg-black/50 border border-white/10 rounded-full hover:bg-white/10 text-white transition-colors">
+                  <button
+                    onClick={() => setShowSheet(false)}
+                    className="p-2 rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
+                  >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
+                {/* Content states */}
                 {analyzeMutation.isPending ? (
-                  <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="flex flex-col items-center justify-center py-14 gap-5">
                     <div className="relative w-16 h-16">
-                      <div className="absolute inset-0 border-t-2 border-primary rounded-full animate-spin" />
-                      <div className="absolute inset-2 border-b-2 border-secondary rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
-                      <Brain className="absolute inset-0 m-auto w-6 h-6 text-white/50" />
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 rounded-full"
+                        style={{ border: "2px solid transparent", borderTopColor: "#00f0ff" }}
+                      />
+                      <motion.div
+                        animate={{ rotate: -360 }}
+                        transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-2 rounded-full"
+                        style={{ border: "2px solid transparent", borderTopColor: "#ff00cc" }}
+                      />
+                      <Brain className="absolute inset-0 m-auto w-6 h-6 text-white/40" />
                     </div>
-                    <p className="font-tech text-primary uppercase tracking-[0.3em] animate-pulse">Extracting Data...</p>
+                    <p
+                      className="font-tech text-xs tracking-[0.4em] uppercase"
+                      style={{ color: "#00f0ff", textShadow: T.glowText("#00f0ff"), animation: "pulse 1.5s infinite" }}
+                    >
+                      Extracting Intelligence...
+                    </p>
                   </div>
                 ) : analyzeMutation.isError ? (
-                  <div className="p-4 bg-destructive/10 border border-destructive/50 rounded-lg text-destructive font-tech">
-                    [ERROR] Neural link failed. Target might be blocking extraction.
+                  <div
+                    className="p-4 font-tech text-sm rounded-sm"
+                    style={{ background: "rgba(255,51,102,0.08)", border: "1px solid rgba(255,51,102,0.3)", color: "#ff3366" }}
+                  >
+                    [ERROR] Neural link failed. Target may be blocking extraction.
                   </div>
                 ) : analyzeMutation.data ? (
-                  <div className="space-y-6">
-                    {/* Privacy Risk Score */}
-                    <div className="p-4 bg-black/60 border border-white/10 rounded-lg flex items-center justify-between">
-                      <span className="font-tech text-sm text-muted-foreground uppercase tracking-widest">Privacy Threat Level</span>
+                  <div className="space-y-5">
+                    {/* Privacy risk badge */}
+                    <div
+                      className="flex items-center justify-between p-4 rounded-sm"
+                      style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    >
+                      <span className="font-tech text-xs text-gray-400 uppercase tracking-widest">Privacy Threat Level</span>
                       <div className="flex items-center gap-2">
-                        {analyzeMutation.data.privacyRisk === 'low' && <ShieldCheck className="w-5 h-5 text-green-500" />}
-                        {analyzeMutation.data.privacyRisk === 'medium' && <Shield className="w-5 h-5 text-yellow-500" />}
-                        {analyzeMutation.data.privacyRisk === 'high' && <ShieldAlert className="w-5 h-5 text-red-500" />}
-                        <span className={cn(
-                          "font-display font-bold uppercase",
-                          analyzeMutation.data.privacyRisk === 'low' ? 'text-green-500' :
-                          analyzeMutation.data.privacyRisk === 'medium' ? 'text-yellow-500' : 'text-red-500'
-                        )}>
-                          {analyzeMutation.data.privacyRisk}
+                        {risk === "low" && <ShieldCheck className="w-5 h-5" style={{ color: "#00ff88" }} />}
+                        {risk === "medium" && <Shield className="w-5 h-5" style={{ color: "#ffd700" }} />}
+                        {risk === "high" && <ShieldAlert className="w-5 h-5" style={{ color: "#ff3366" }} />}
+                        <span
+                          className="font-display font-bold uppercase text-sm"
+                          style={{
+                            color: risk === "low" ? "#00ff88" : risk === "medium" ? "#ffd700" : "#ff3366",
+                            textShadow: T.glowText(risk === "low" ? "#00ff88" : risk === "medium" ? "#ffd700" : "#ff3366"),
+                          }}
+                        >
+                          {risk}
                         </span>
                       </div>
                     </div>
 
                     {/* Summary */}
                     <div>
-                      <h4 className="font-tech text-sm text-primary mb-2 uppercase tracking-widest flex items-center gap-2">
-                        <ChevronRight className="w-4 h-4" /> Core Synthesis
-                      </h4>
-                      <p className="text-white/80 font-sans text-sm leading-relaxed p-4 bg-primary/5 border-l-2 border-primary/50">
+                      <p className="font-tech text-[10px] tracking-widest text-cyan-500 uppercase mb-2">
+                        › Core Synthesis
+                      </p>
+                      <p
+                        className="text-sm text-white/80 leading-relaxed pl-4"
+                        style={{ borderLeft: "2px solid rgba(0,240,255,0.3)" }}
+                      >
                         {analyzeMutation.data.summary}
                       </p>
                     </div>
 
-                    {/* Key Points */}
+                    {/* Key points */}
                     <div>
-                      <h4 className="font-tech text-sm text-secondary mb-3 uppercase tracking-widest flex items-center gap-2">
-                        <ChevronRight className="w-4 h-4" /> Extracted Vectors
-                      </h4>
+                      <p className="font-tech text-[10px] tracking-widest text-pink-500 uppercase mb-3">
+                        › Extracted Vectors
+                      </p>
                       <ul className="space-y-2">
-                        {analyzeMutation.data.keyPoints.map((point, i) => (
-                          <li key={i} className="flex gap-3 text-sm text-white/70 font-sans items-start p-2 hover:bg-white/5 transition-colors rounded">
-                            <span className="text-secondary mt-1 text-[10px]">■</span>
-                            {point}
+                        {analyzeMutation.data.keyPoints.map((pt, i) => (
+                          <li
+                            key={i}
+                            className="flex gap-3 text-sm text-white/70 items-start p-2 rounded-sm"
+                            style={{ background: "rgba(255,255,255,0.02)" }}
+                          >
+                            <span style={{ color: "#ff00cc" }}>▪</span>
+                            {pt}
                           </li>
                         ))}
                       </ul>
                     </div>
                   </div>
-                ) : (
-                  // Fallback mock data if API is empty
-                  <div className="p-4 bg-primary/10 border border-primary/30 text-primary font-tech">
-                    [SYSTEM READY] Awaiting analyze command.
-                  </div>
-                )}
+                ) : null}
               </div>
             </motion.div>
           </>
@@ -176,18 +310,4 @@ export default function Browser() {
       </AnimatePresence>
     </div>
   );
-}
-
-// Just a decorative component
-function GlobeWireframe() {
-  return (
-    <svg viewBox="0 0 100 100" className="w-64 h-64 text-primary/30" fill="none" stroke="currentColor" strokeWidth="0.5">
-      <circle cx="50" cy="50" r="48" />
-      <ellipse cx="50" cy="50" rx="24" ry="48" />
-      <ellipse cx="50" cy="50" rx="12" ry="48" />
-      <path d="M 2 50 L 98 50" />
-      <path d="M 10 25 L 90 25" />
-      <path d="M 10 75 L 90 75" />
-    </svg>
-  )
 }

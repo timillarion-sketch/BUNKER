@@ -1,210 +1,342 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
-import { 
-  useGetMessages, 
-  useSendMessage, 
-  useBurnHistory, 
-  useListCharacters 
+import {
+  useGetMessages,
+  useSendMessage,
+  useBurnHistory,
 } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Flame, ChevronLeft, ShieldAlert } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { CyberButton } from "@/components/ui/cyber-button";
+import { Send, Flame, ChevronLeft, ShieldCheck } from "lucide-react";
+import { AI_CHARACTERS, T } from "@/lib/constants";
 
 export default function Chat() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
-  
-  // Local optimistic state for chat
   const [localMessages, setLocalMessages] = useState<any[]>([]);
+  const [burnConfirm, setBurnConfirm] = useState(false);  // double-tap state
+  const [burning, setBurning] = useState(false);
 
-  // Fetch character details
-  const { data: characters } = useListCharacters();
-  const character = characters?.find(c => c.id === id) || { name: "Unknown Entity", id };
+  const char = AI_CHARACTERS.find((c) => c.id === id) ?? {
+    id: id ?? "echo",
+    name: "Unknown",
+    avatar: "?",
+    status: "online" as const,
+    specialty: "Unknown",
+    description: "",
+    color: { hex: "#00f0ff" } as any,
+    greeting: "Connection established.",
+  };
+  const neon = char.color.hex;
 
-  // API Hooks
-  const { data: apiMessages, refetch } = useGetMessages(id || "", {
-    query: { retry: 1, enabled: !!id }
+  // API hooks
+  const { data: apiMessages, refetch } = useGetMessages(id ?? "", {
+    query: { retry: 1, enabled: !!id },
   });
-  
-  const sendMessageMutation = useSendMessage({
+
+  const sendMutation = useSendMessage({
     mutation: {
-      onSuccess: (newMessage) => {
-        setLocalMessages(prev => [...prev, newMessage]);
-        refetch();
-      }
-    }
+      onSuccess: (msg) => {
+        setLocalMessages((prev) => [...prev, msg]);
+      },
+    },
   });
 
-  const burnHistoryMutation = useBurnHistory({
+  const burnMutation = useBurnHistory({
     mutation: {
       onSuccess: () => {
-        setLocalMessages([]);
-        refetch();
-      }
-    }
+        setBurning(true);
+        setTimeout(() => {
+          setLocalMessages([]);
+          setBurning(false);
+          refetch();
+        }, 600);
+      },
+    },
   });
 
-  // Sync local state with API when it loads
+  // Seed greeting + API messages
   useEffect(() => {
-    if (apiMessages && apiMessages.length > 0 && localMessages.length === 0) {
+    const greeting = {
+      id: "greeting",
+      characterId: id,
+      content: char.greeting,
+      role: "assistant",
+      timestamp: new Date().toISOString(),
+    };
+    if (apiMessages && apiMessages.length > 0) {
       setLocalMessages(apiMessages);
+    } else {
+      setLocalMessages([greeting]);
     }
   }, [apiMessages]);
 
-  // Auto scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [localMessages]);
+  }, [localMessages, sendMutation.isPending]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !id) return;
-
     const userMsg = {
-      id: Date.now().toString(),
+      id: `u_${Date.now()}`,
       characterId: id,
       content: input,
       role: "user",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
-    
-    setLocalMessages(prev => [...prev, userMsg]);
+    setLocalMessages((prev) => [...prev, userMsg]);
     setInput("");
-
-    sendMessageMutation.mutate({
-      characterId: id,
-      data: { content: userMsg.content }
-    });
+    sendMutation.mutate({ characterId: id, data: { content: userMsg.content } });
   };
 
-  const handleBurn = () => {
-    if (!id) return;
-    if (confirm("WARNING: Irreversible action. Burn all comms history?")) {
-      burnHistoryMutation.mutate({ characterId: id });
+  const handleBurnClick = () => {
+    if (!burnConfirm) {
+      setBurnConfirm(true);
+      setTimeout(() => setBurnConfirm(false), 3000);
+      return;
     }
+    setBurnConfirm(false);
+    burnMutation.mutate({ characterId: id ?? "" });
   };
-
-  // Mock messages if empty and no API (for demo aesthetics)
-  const displayMessages = localMessages.length > 0 ? localMessages : [
-    { id: '1', role: 'assistant', content: `Connection established. I am ${character.name}. State your directive.`, timestamp: new Date().toISOString() }
-  ];
 
   return (
-    <div className="flex flex-col h-screen bg-black relative">
-      {/* Background Matrix/Grid */}
-      <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(rgba(0,240,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.5)_1px,transparent_1px)] bg-[size:20px_20px] pointer-events-none" />
+    <div className="flex flex-col h-screen relative overflow-hidden" style={{ background: "#050508" }}>
+      {/* Grid background */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.04]"
+        style={{
+          backgroundImage: `linear-gradient(${neon}55 1px, transparent 1px), linear-gradient(90deg, ${neon}55 1px, transparent 1px)`,
+          backgroundSize: "24px 24px",
+        }}
+      />
 
-      {/* Top Header */}
-      <header className="glass-panel border-b border-primary/20 p-4 flex items-center justify-between z-10 sticky top-0">
-        <button onClick={() => setLocation('/')} className="p-2 -ml-2 text-muted-foreground hover:text-primary transition-colors">
+      {/* Top glow */}
+      <div
+        className="absolute top-0 inset-x-0 h-32 pointer-events-none"
+        style={{ background: `radial-gradient(ellipse at 50% 0%, ${neon}15 0%, transparent 70%)` }}
+      />
+
+      {/* Header */}
+      <header
+        className="flex items-center justify-between px-4 py-3 z-10 sticky top-0"
+        style={{
+          background: "rgba(5,5,10,0.85)",
+          borderBottom: `1px solid ${neon}25`,
+          backdropFilter: "blur(16px)",
+          boxShadow: `0 4px 20px ${neon}08`,
+        }}
+      >
+        <button
+          onClick={() => setLocation("/")}
+          className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors"
+        >
           <ChevronLeft className="w-6 h-6" />
         </button>
-        
+
         <div className="flex flex-col items-center">
-          <h2 className="font-display font-bold text-lg text-white neon-text-blue tracking-widest uppercase">
-            {character.name}
-          </h2>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{char.avatar}</span>
+            <h2
+              className="font-display font-bold text-base tracking-widest uppercase text-white"
+              style={{ textShadow: T.glowText(neon) }}
+            >
+              {char.name}
+            </h2>
+          </div>
           <div className="flex items-center gap-1.5">
-            <ShieldAlert className="w-3 h-3 text-green-400" />
-            <span className="text-[10px] font-tech text-green-400 tracking-widest uppercase">Encrypted Comm</span>
+            <ShieldCheck className="w-3 h-3" style={{ color: "#00ff88" }} />
+            <span className="font-tech text-[9px] tracking-widest uppercase" style={{ color: "#00ff88" }}>
+              E2E Encrypted
+            </span>
           </div>
         </div>
 
-        <button 
-          onClick={handleBurn}
-          disabled={burnHistoryMutation.isPending}
-          className="p-2 -mr-2 text-destructive/70 hover:text-destructive hover:drop-shadow-[0_0_8px_rgba(255,0,0,0.8)] transition-all group relative"
-          title="BURN HISTORY"
+        {/* Double-tap BURN */}
+        <motion.button
+          onClick={handleBurnClick}
+          disabled={burnMutation.isPending}
+          whileTap={{ scale: 0.9 }}
+          className="p-2 -mr-2 flex flex-col items-center gap-0.5 transition-all"
+          style={{
+            color: burnConfirm ? "#ff3366" : "#444",
+            filter: burnConfirm ? `drop-shadow(${T.glow("#ff3366")})` : "none",
+          }}
+          title={burnConfirm ? "Tap again to confirm BURN" : "Burn history (double-tap)"}
         >
-          <Flame className="w-6 h-6 group-hover:scale-110 transition-transform" />
-          <span className="absolute -bottom-4 right-0 text-[8px] font-tech opacity-0 group-hover:opacity-100 text-destructive whitespace-nowrap">BURN</span>
-        </button>
+          <Flame className={`w-6 h-6 ${burnConfirm ? "animate-pulse" : ""}`} />
+          <span className="font-tech text-[8px] tracking-wider uppercase">
+            {burnConfirm ? "CONFIRM" : "BURN"}
+          </span>
+        </motion.button>
       </header>
 
-      {/* Message List */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 z-10 scroll-smooth">
-        <div className="text-center my-6">
-          <p className="inline-block px-3 py-1 bg-black/60 border border-primary/20 rounded text-[10px] font-tech text-primary/60 uppercase tracking-widest">
-            SESSION INITIATED
-          </p>
+      {/* Session banner */}
+      <div className="z-10 px-4 pt-4">
+        <div
+          className="flex items-center justify-center py-1.5 rounded-sm"
+          style={{ background: `${neon}08`, border: `1px solid ${neon}15` }}
+        >
+          <span className="font-tech text-[9px] tracking-[0.25em] uppercase" style={{ color: `${neon}80` }}>
+            Session Initiated · Keys Exchanged
+          </span>
         </div>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 z-10 no-scrollbar">
+        <AnimatePresence>
+          {burning && (
+            <motion.div
+              key="burn-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center"
+              style={{ background: "rgba(255,0,0,0.08)" }}
+            >
+              <motion.div
+                animate={{ scale: [1, 1.4, 0.8, 1.2, 0], opacity: [1, 0.8, 1, 0.5, 0] }}
+                transition={{ duration: 0.6 }}
+                style={{ color: "#ff3366", filter: `drop-shadow(${T.glowStrong("#ff3366")})` }}
+              >
+                <Flame className="w-24 h-24" />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence initial={false}>
-          {displayMessages.map((msg) => {
-            const isUser = msg.role === 'user';
+          {localMessages.map((msg) => {
+            const isUser = msg.role === "user";
             return (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, x: isUser ? 20 : -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className={cn(
-                  "flex w-full",
-                  isUser ? "justify-end" : "justify-start"
-                )}
+                initial={{ opacity: 0, y: 10, x: isUser ? 16 : -16 }}
+                animate={{ opacity: 1, y: 0, x: 0 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
               >
-                <div className={cn(
-                  "max-w-[80%] p-3 border relative group",
-                  isUser 
-                    ? "bg-primary/10 border-primary/30 rounded-l-xl rounded-tr-xl" 
-                    : "bg-secondary/10 border-secondary/30 rounded-r-xl rounded-tl-xl"
-                )}>
-                  {/* Cyberpunk accent corner */}
-                  <div className={cn(
-                    "absolute w-2 h-2 border-t border-current top-0",
-                    isUser ? "right-0 border-r" : "left-0 border-l",
-                    isUser ? "text-primary" : "text-secondary"
-                  )} />
-                  
-                  <p className="text-sm text-white/90 font-sans leading-relaxed break-words">
-                    {msg.content}
-                  </p>
-                  <p className={cn(
-                    "text-[10px] font-tech tracking-wider mt-2 opacity-50 text-right",
-                    isUser ? "text-primary" : "text-secondary"
-                  )}>
-                    {format(new Date(msg.timestamp), 'HH:mm:ss')}
+                {!isUser && (
+                  <div className="flex-shrink-0 mr-2 mt-1">
+                    <div
+                      className="w-7 h-7 rounded-sm flex items-center justify-center text-sm"
+                      style={{ background: `${neon}15`, border: `1px solid ${neon}30` }}
+                    >
+                      {char.avatar}
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  className="max-w-[78%] px-4 py-3 relative"
+                  style={{
+                    background: isUser ? `${neon}10` : "rgba(20,20,30,0.8)",
+                    border: `1px solid ${isUser ? `${neon}35` : "rgba(255,255,255,0.07)"}`,
+                    boxShadow: isUser ? `0 0 12px ${neon}12` : undefined,
+                    borderRadius: isUser ? "12px 2px 12px 12px" : "2px 12px 12px 12px",
+                  }}
+                >
+                  {/* Corner accent */}
+                  <div
+                    className="absolute w-2 h-2 border-t"
+                    style={{
+                      top: 0,
+                      [isUser ? "right" : "left"]: 0,
+                      borderRight: isUser ? `1px solid ${neon}60` : undefined,
+                      borderLeft: !isUser ? `1px solid rgba(255,255,255,0.2)` : undefined,
+                      borderTopColor: isUser ? `${neon}60` : "rgba(255,255,255,0.2)",
+                    }}
+                  />
+
+                  <p className="text-sm text-white/90 leading-relaxed">{msg.content}</p>
+                  <p
+                    className="font-tech text-[9px] tracking-wider mt-2 text-right"
+                    style={{ color: isUser ? `${neon}60` : "rgba(255,255,255,0.25)" }}
+                  >
+                    {format(new Date(msg.timestamp), "HH:mm:ss")}
                   </p>
                 </div>
               </motion.div>
             );
           })}
         </AnimatePresence>
-        
-        {sendMessageMutation.isPending && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-             <div className="px-4 py-2 bg-secondary/5 border border-secondary/20 rounded-r-xl rounded-tl-xl flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce" />
-                <div className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                <div className="w-1.5 h-1.5 bg-secondary rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
-             </div>
-          </motion.div>
-        )}
+
+        {/* AI typing indicator */}
+        <AnimatePresence>
+          {sendMutation.isPending && (
+            <motion.div
+              key="typing"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex justify-start"
+            >
+              <div
+                className="px-5 py-3 flex items-center gap-1.5"
+                style={{
+                  background: "rgba(20,20,30,0.8)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: "2px 12px 12px 12px",
+                }}
+              >
+                {[0, 0.2, 0.4].map((d, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{ y: [0, -4, 0] }}
+                    transition={{ duration: 0.6, repeat: Infinity, delay: d }}
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: neon, boxShadow: `0 0 6px ${neon}` }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 glass-panel border-t border-primary/20 z-10 pb-safe">
+      {/* Input */}
+      <div
+        className="px-4 pb-5 pt-3 z-10"
+        style={{
+          background: "rgba(5,5,10,0.9)",
+          borderTop: `1px solid ${neon}20`,
+          backdropFilter: "blur(16px)",
+        }}
+      >
         <form onSubmit={handleSend} className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="[ ENTER DIRECTIVE ]"
-            className="flex-1 bg-black/50 border border-primary/30 rounded-none px-4 py-3 text-sm text-primary placeholder:text-primary/30 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 font-tech uppercase tracking-wider transition-all"
+            className="flex-1 bg-transparent py-3 px-4 text-sm font-tech uppercase tracking-wider placeholder:tracking-wider focus:outline-none transition-all"
+            style={{
+              background: "rgba(0,0,0,0.5)",
+              border: `1px solid ${input ? `${neon}50` : "rgba(255,255,255,0.08)"}`,
+              color: neon,
+              boxShadow: input ? `inset 0 0 10px ${neon}08` : undefined,
+            }}
           />
-          <CyberButton 
-            type="submit" 
-            size="icon" 
-            disabled={!input.trim() || sendMessageMutation.isPending}
-            className="rounded-none h-auto w-14"
+          <motion.button
+            type="submit"
+            disabled={!input.trim() || sendMutation.isPending}
+            whileTap={{ scale: 0.9 }}
+            className="px-5 flex items-center justify-center font-display font-bold text-xs tracking-widest uppercase disabled:opacity-30 transition-all"
+            style={{
+              background: `${neon}15`,
+              border: `1px solid ${neon}50`,
+              color: neon,
+              boxShadow: input.trim() ? T.glow(neon) : undefined,
+            }}
           >
             <Send className="w-5 h-5" />
-          </CyberButton>
+          </motion.button>
         </form>
       </div>
     </div>
