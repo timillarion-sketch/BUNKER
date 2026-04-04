@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Users, Globe, MessageSquare, Radio, UserCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { NAV_ITEMS, T } from "@/lib/constants";
+import { useTranslation } from "react-i18next";
 
 const ICON_MAP: Record<string, any> = {
   Users, Globe, MessageSquare, Radio, UserCircle,
@@ -9,6 +10,7 @@ const ICON_MAP: Record<string, any> = {
 
 export function BottomNav() {
   const [location] = useLocation();
+  const { t } = useTranslation();
 
   return (
     <div
@@ -26,6 +28,7 @@ export function BottomNav() {
             location === tab.path || (tab.path !== "/" && location.startsWith(tab.path));
           const Icon = ICON_MAP[tab.icon];
           const neon = "#00f0ff";
+          const label = t(`nav.${tab.id}`);
 
           return (
             <Link
@@ -33,7 +36,6 @@ export function BottomNav() {
               href={tab.path}
               className="flex-1 flex flex-col items-center justify-center py-2 relative group"
             >
-              {/* Active indicator bar */}
               {isActive && (
                 <motion.div
                   layoutId="nav-bar"
@@ -42,8 +44,6 @@ export function BottomNav() {
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-
-              {/* Active bg glow */}
               {isActive && (
                 <motion.div
                   layoutId="nav-glow"
@@ -52,7 +52,6 @@ export function BottomNav() {
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-
               <Icon
                 className="w-6 h-6 mb-1 transition-all duration-200 z-10"
                 style={{
@@ -62,10 +61,10 @@ export function BottomNav() {
                 }}
               />
               <span
-                className="font-tech text-[9px] uppercase tracking-widest z-10 transition-colors duration-200"
+                className="font-tech text-[9px] uppercase tracking-widest z-10 transition-colors duration-200 leading-none text-center"
                 style={{ color: isActive ? neon : "#333" }}
               >
-                {tab.label}
+                {label}
               </span>
             </Link>
           );
