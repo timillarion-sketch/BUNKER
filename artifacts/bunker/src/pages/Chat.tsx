@@ -2,19 +2,20 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Flame, ChevronLeft, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Send, Flame, ChevronLeft, ShieldCheck, AlertTriangle, Ghost } from "lucide-react";
 import { AI_CHARACTERS, N8N_WEBHOOK, T } from "@/lib/constants";
+import { useGhostMode } from "@/hooks/use-ghost-mode";
 import { useTranslation } from "react-i18next";
 
 // ── Types ──────────────────────────────────────────────────
 interface Msg {
-  id:          string;
-  role:        "user" | "assistant" | "error";
-  content:     string;
-  timestamp:   string;
+  id:        string;
+  role:      "user" | "assistant" | "error" | "ghost";
+  content:   string;
+  timestamp: string;
 }
 
-// ── n8n send helper ────────────────────────────────────────
+// ── n8n send ───────────────────────────────────────────────
 async function sendToN8n(webhookName: string, message: string): Promise<string> {
   const res = await fetch(N8N_WEBHOOK, {
     method:  "POST",
@@ -23,7 +24,6 @@ async function sendToN8n(webhookName: string, message: string): Promise<string> 
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  // Accept reply, message, text, or output field
   const reply = data?.reply ?? data?.message ?? data?.text ?? data?.output ?? null;
   if (!reply) throw new Error("no reply field");
   return String(reply);
@@ -31,10 +31,11 @@ async function sendToN8n(webhookName: string, message: string): Promise<string> 
 
 // ── Component ──────────────────────────────────────────────
 export default function Chat() {
-  const { id }         = useParams<{ id: string }>();
+  const { id }          = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
-  const { t }          = useTranslation();
-  const scrollRef      = useRef<HTMLDivElement>(null);
+  const { t }           = useTranslation();
+  const scrollRef       = useRef<HTMLDivElement>(null);
+  const { isGhostMode } = useGhostMode();
 
   const char = AI_CHARACTERS.find(c => c.id === id) ?? {
     id:          id ?? "unknown",
@@ -83,8 +84,19 @@ export default function Chat() {
     };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
-    setLoading(true);
 
+    // Ghost mode: no network call, just a local ghost indicator
+    if (isGhostMode) {
+      setMessages(prev => [...prev, {
+        id:        `ghost_${Date.now()}`,
+        role:      "ghost",
+        content:   "[ ПРИЗРАК ] Сообщение не передано. Только локальная запись.",
+        timestamp: new Date().toISOString(),
+      }]);
+      return;
+    }
+
+    setLoading(true);
     try {
       const webhookName = (char as any).webhookName ?? char.id;
       const reply       = await sendToN8n(webhookName, text);
@@ -115,10 +127,7 @@ export default function Chat() {
     }
     setBurnConfirm(false);
     setBurning(true);
-    setTimeout(() => {
-      setMessages([]);
-      setBurning(false);
-    }, 600);
+    setTimeout(() => { setMessages([]); setBurning(false); }, 600);
   };
 
   return (
@@ -133,16 +142,15 @@ export default function Chat() {
         style={{ background: `radial-gradient(ellipse at 50% 0%, ${neon}15 0%, transparent 70%)` }} />
 
       {/* ── Header ── */}
-      <header
-        className="flex items-center justify-between px-4 py-3 z-10 sticky top-0"
+      <header className="flex items-center justify-between px-4 py-3 z-10 sticky top-0"
         style={{
-          background:    "rgba(5,5,10,0.88)",
-          borderBottom:  `1px solid ${neon}25`,
+          background:     "rgba(5,5,10,0.88)",
+          borderBottom:   `1px solid ${isGhostMode ? "rgba(255,255,255,0.08)" : `${neon}25`}`,
           backdropFilter: "blur(16px)",
-          boxShadow:     `0 4px 20px ${neon}08`,
-        }}
-      >
-        <button onClick={() => setLocation("/")} className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors">
+          boxShadow:      `0 4px 20px ${neon}08`,
+        }}>
+        <button onClick={() => setLocation("/lobby")}
+          className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
 
@@ -150,27 +158,28 @@ export default function Chat() {
           <div className="flex items-center gap-2">
             <span className="text-xl">{char.avatar}</span>
             <h2 className="font-display font-bold text-base tracking-widest uppercase text-white"
-              style={{ textShadow: T.glowText(neon) }}>
+              style={{ textShadow: isGhostMode ? "none" : T.glowText(neon) }}>
               {char.name}
             </h2>
           </div>
           <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3 h-3" style={{ color: "#00ff88" }} />
-            <span className="font-tech text-[9px] tracking-widest uppercase" style={{ color: "#00ff88" }}>
-              {t("chat.encrypted")}
+            {isGhostMode
+              ? <Ghost className="w-3 h-3" style={{ color: "#666" }} />
+              : <ShieldCheck className="w-3 h-3" style={{ color: "#00ff88" }} />
+            }
+            <span className="font-tech text-[9px] tracking-widest uppercase"
+              style={{ color: isGhostMode ? "#666" : "#00ff88" }}>
+              {isGhostMode ? "ПРИЗРАК РЕЖИМ" : t("chat.encrypted")}
             </span>
           </div>
         </div>
 
-        <motion.button
-          onClick={handleBurnClick}
-          whileTap={{ scale: 0.9 }}
+        <motion.button onClick={handleBurnClick} whileTap={{ scale: 0.9 }}
           className="p-2 -mr-2 flex flex-col items-center gap-0.5 transition-all"
           style={{
             color:  burnConfirm ? "#ff3366" : "#444",
             filter: burnConfirm ? `drop-shadow(${T.glow("#ff3366")})` : "none",
-          }}
-        >
+          }}>
           <Flame className={`w-6 h-6 ${burnConfirm ? "animate-pulse" : ""}`} />
           <span className="font-tech text-[8px] tracking-wider uppercase">
             {burnConfirm ? t("chat.burnConfirm") : t("chat.burn")}
@@ -178,8 +187,28 @@ export default function Chat() {
         </motion.button>
       </header>
 
+      {/* ── Ghost Mode banner ── */}
+      <AnimatePresence>
+        {isGhostMode && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="z-10 overflow-hidden"
+          >
+            <div className="mx-4 mt-3 px-3 py-2 rounded-sm flex items-center gap-2"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <Ghost className="w-3 h-3 shrink-0 text-gray-600" />
+              <span className="font-tech text-[9px] uppercase tracking-[0.2em] text-gray-600">
+                Призрак режим · Сообщения не покидают устройство
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Session banner ── */}
-      <div className="z-10 px-4 pt-4">
+      <div className="z-10 px-4 pt-3">
         <div className="flex items-center justify-center py-1.5 rounded-sm"
           style={{ background: `${neon}08`, border: `1px solid ${neon}15` }}>
           <span className="font-tech text-[9px] tracking-[0.25em] uppercase"
@@ -209,11 +238,29 @@ export default function Chat() {
           )}
         </AnimatePresence>
 
-        {/* Message bubbles */}
+        {/* Bubbles */}
         <AnimatePresence initial={false}>
           {messages.map(msg => {
             const isUser  = msg.role === "user";
             const isError = msg.role === "error";
+            const isGhost = msg.role === "ghost";
+
+            const bubbleBg =
+              isUser  ? `${neon}10`
+            : isError ? "rgba(255,51,102,0.08)"
+            : isGhost ? "rgba(255,255,255,0.03)"
+            :           "rgba(20,20,30,0.8)";
+
+            const bubbleBorder =
+              isUser  ? `${neon}35`
+            : isError ? "rgba(255,51,102,0.3)"
+            : isGhost ? "rgba(255,255,255,0.08)"
+            :           "rgba(255,255,255,0.07)";
+
+            const textColor =
+              isError ? "#ff6680"
+            : isGhost ? "#555"
+            :           "rgba(255,255,255,0.9)";
 
             return (
               <motion.div
@@ -224,50 +271,42 @@ export default function Chat() {
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}
               >
-                {/* Avatar for assistant / error */}
+                {/* Avatar */}
                 {!isUser && (
                   <div className="flex-shrink-0 mr-2 mt-1">
                     <div className="w-7 h-7 rounded-sm flex items-center justify-center text-sm"
                       style={{
-                        background: isError ? "rgba(255,51,102,0.12)" : `${neon}15`,
-                        border:     `1px solid ${isError ? "rgba(255,51,102,0.3)" : `${neon}30`}`,
+                        background: isError ? "rgba(255,51,102,0.12)" : isGhost ? "rgba(255,255,255,0.04)" : `${neon}15`,
+                        border:     `1px solid ${isError ? "rgba(255,51,102,0.3)" : isGhost ? "rgba(255,255,255,0.08)" : `${neon}30`}`,
                       }}>
-                      {isError ? <AlertTriangle className="w-3.5 h-3.5 text-red-400" /> : char.avatar}
+                      {isError ? <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                       : isGhost ? <Ghost className="w-3.5 h-3.5 text-gray-700" />
+                       : char.avatar}
                     </div>
                   </div>
                 )}
 
-                <div
-                  className="max-w-[78%] px-4 py-3 relative"
+                <div className="max-w-[78%] px-4 py-3 relative"
                   style={{
-                    background:   isUser  ? `${neon}10`
-                                : isError ? "rgba(255,51,102,0.08)"
-                                :           "rgba(20,20,30,0.8)",
-                    border:       `1px solid ${
-                                    isUser  ? `${neon}35`
-                                  : isError ? "rgba(255,51,102,0.3)"
-                                  :           "rgba(255,255,255,0.07)"
-                                }`,
+                    background:   bubbleBg,
+                    border:       `1px solid ${bubbleBorder}`,
                     boxShadow:    isUser ? `0 0 12px ${neon}12` : undefined,
                     borderRadius: isUser ? "12px 2px 12px 12px" : "2px 12px 12px 12px",
-                  }}
-                >
-                  {/* Corner accent */}
+                  }}>
                   <div className="absolute w-2 h-2 border-t"
                     style={{
                       top: 0,
                       [isUser ? "right" : "left"]: 0,
                       borderRight:    isUser ? `1px solid ${neon}60` : undefined,
-                      borderLeft:    !isUser ? `1px solid ${isError ? "rgba(255,51,102,0.4)" : "rgba(255,255,255,0.2)"}` : undefined,
-                      borderTopColor: isUser ? `${neon}60` : isError ? "rgba(255,51,102,0.4)" : "rgba(255,255,255,0.2)",
-                    }}
-                  />
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap"
-                    style={{ color: isError ? "#ff6680" : "rgba(255,255,255,0.9)" }}>
+                      borderLeft:    !isUser ? `1px solid ${bubbleBorder}` : undefined,
+                      borderTopColor: isUser ? `${neon}60` : bubbleBorder,
+                    }} />
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono"
+                    style={{ color: textColor, fontFamily: isGhost ? "monospace" : undefined }}>
                     {msg.content}
                   </p>
                   <p className="font-tech text-[9px] tracking-wider mt-2 text-right"
-                    style={{ color: isUser ? `${neon}60` : "rgba(255,255,255,0.22)" }}>
+                    style={{ color: isUser ? `${neon}60` : "rgba(255,255,255,0.2)" }}>
                     {format(new Date(msg.timestamp), "HH:mm:ss")}
                   </p>
                 </div>
@@ -276,7 +315,7 @@ export default function Chat() {
           })}
         </AnimatePresence>
 
-        {/* Typing indicator */}
+        {/* Typing dots */}
         <AnimatePresence>
           {loading && (
             <motion.div key="typing"
@@ -311,8 +350,8 @@ export default function Chat() {
       {/* ── Input bar ── */}
       <div className="px-4 pb-5 pt-3 z-10"
         style={{
-          background:    "rgba(5,5,10,0.92)",
-          borderTop:     `1px solid ${neon}20`,
+          background:     "rgba(5,5,10,0.92)",
+          borderTop:      `1px solid ${isGhostMode ? "rgba(255,255,255,0.06)" : `${neon}20`}`,
           backdropFilter: "blur(16px)",
         }}>
         <form onSubmit={handleSend} className="flex gap-2">
@@ -320,15 +359,14 @@ export default function Chat() {
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder={t("chat.placeholder")}
+            placeholder={isGhostMode ? "[ ПРИЗРАК РЕЖИМ ]" : t("chat.placeholder")}
             disabled={loading}
             className="flex-1 bg-transparent py-3 px-4 text-sm font-tech uppercase tracking-wider placeholder:tracking-wider focus:outline-none transition-all disabled:opacity-50"
             style={{
               background:  "rgba(0,0,0,0.5)",
-              border:     `1px solid ${input ? `${neon}50` : "rgba(255,255,255,0.08)"}`,
-              color:       neon,
-              boxShadow:   input ? `inset 0 0 10px ${neon}08` : undefined,
-              caretColor:  neon,
+              border:     `1px solid ${input ? (isGhostMode ? "rgba(255,255,255,0.2)" : `${neon}50`) : "rgba(255,255,255,0.08)"}`,
+              color:       isGhostMode ? "#888" : neon,
+              caretColor:  isGhostMode ? "#888" : neon,
             }}
           />
           <motion.button
@@ -337,13 +375,12 @@ export default function Chat() {
             whileTap={{ scale: 0.9 }}
             className="px-5 flex items-center justify-center font-display font-bold text-xs tracking-widest uppercase disabled:opacity-30 transition-all"
             style={{
-              background: `${neon}15`,
-              border:     `1px solid ${neon}50`,
-              color:       neon,
-              boxShadow:   input.trim() && !loading ? T.glow(neon) : undefined,
-            }}
-          >
-            <Send className="w-5 h-5" />
+              background: isGhostMode ? "rgba(255,255,255,0.05)" : `${neon}15`,
+              border:     `1px solid ${isGhostMode ? "rgba(255,255,255,0.15)" : `${neon}50`}`,
+              color:       isGhostMode ? "#666" : neon,
+              boxShadow:   input.trim() && !loading && !isGhostMode ? T.glow(neon) : undefined,
+            }}>
+            {isGhostMode ? <Ghost className="w-5 h-5" /> : <Send className="w-5 h-5" />}
           </motion.button>
         </form>
       </div>

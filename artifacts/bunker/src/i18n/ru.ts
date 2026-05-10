@@ -1,6 +1,6 @@
 const ru = {
   nav: {
-    lobby:   "ЛОББИ",
+    prompts: "ПРОМПТЫ",
     browser: "БРАУЗЕР",
     chats:   "СВЯЗЬ",
     feed:    "ЛЕНТА",
@@ -96,9 +96,12 @@ const ru = {
     vkLinked:     "VK ID — ПРИВЯЗАН",
     yandexLinked: "ЯНДЕКС ID — ПРИВЯЗАН",
 
-    privacy:          "Настройки",
+    ghostMode:        "Призрак Режим",
+    ghostModeDesc:    "Сообщения остаются только на устройстве. Сеть не задействована.",
+
+    privacy:           "Настройки",
     notifications:    "Уведомления",
-    notificationsDesc:"Системные push-уведомления",
+    notificationsDesc: "Системные push-уведомления",
     screenshots:      "Скриншоты",
     screenshotsDesc:  "Разрешить захват экрана приложения",
 

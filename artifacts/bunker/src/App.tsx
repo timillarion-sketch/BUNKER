@@ -4,15 +4,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 
-import { BottomNav } from "@/components/layout/BottomNav";
-import Login from "@/pages/Login";
-import Characters from "@/pages/Characters";
-import Chat from "@/pages/Chat";
-import Browser from "@/pages/Browser";
-import ChatsList from "@/pages/ChatsList";
-import Feed from "@/pages/Feed";
-import Profile from "@/pages/Profile";
-import NotFound from "@/pages/not-found";
+import { BottomNav }   from "@/components/layout/BottomNav";
+import Login           from "@/pages/Login";
+import PromptFeed      from "@/pages/PromptFeed";
+import Characters      from "@/pages/Characters";
+import Chat            from "@/pages/Chat";
+import Browser         from "@/pages/Browser";
+import ChatsList       from "@/pages/ChatsList";
+import Feed            from "@/pages/Feed";
+import Profile         from "@/pages/Profile";
+import NotFound        from "@/pages/not-found";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,9 +52,17 @@ function Router() {
 
   return (
     <Switch>
+      {/* ── Facade home ── */}
       <Route path="/">
+        <MainLayout><PromptFeed /></MainLayout>
+      </Route>
+
+      {/* ── Secret: AI Lobby — accessed via long press on ПРОМПТЫ header ── */}
+      <Route path="/lobby">
         <MainLayout><Characters /></MainLayout>
       </Route>
+
+      {/* ── Visible tabs ── */}
       <Route path="/browser">
         <MainLayout><Browser /></MainLayout>
       </Route>
@@ -66,12 +75,12 @@ function Router() {
       <Route path="/profile">
         <MainLayout><Profile /></MainLayout>
       </Route>
-      
-      {/* Detail Views without bottom nav */}
+
+      {/* ── Detail views (no nav bar) ── */}
       <Route path="/chat/:id">
         <ProtectedLayout><Chat /></ProtectedLayout>
       </Route>
-      
+
       <Route component={NotFound} />
     </Switch>
   );

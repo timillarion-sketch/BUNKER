@@ -26,13 +26,14 @@ export const COLORS = {
   orange: { hex: "#ff6600" },
   gold:   { hex: "#ffd700" },
   red:    { hex: "#ff3366" },
+  teal:   { hex: "#00e5cc" },
 } as const;
 
 // ─── AI Characters ────────────────────────────────────────
-// locked: false  → fully functional, sends to n8n webhook.
-// locked: true   → shows "В разработке" modal on tap.
+// locked: false  → functional chat → n8n webhook
+// locked: true   → premium modal on tap
 export const AI_CHARACTERS = [
-  // ── FREE (working) ──────────────────────────────────────
+  // ── FREE ────────────────────────────────────────────────
   {
     id:          "psychologist",
     webhookName: "psychologist",
@@ -69,8 +70,20 @@ export const AI_CHARACTERS = [
     greeting:    "Привет, дружище. Готов прокачать твою игру? Начнём.",
     locked:      false,
   },
+  {
+    id:          "content-producer",
+    webhookName: "content-producer",
+    name:        "Контент Продюсер",
+    avatar:      "🎬",
+    status:      "online" as const,
+    specialty:   "Вирусный контент",
+    description: "Генерирует идеи видео, сценарии Reels и стратегии роста.",
+    color:       COLORS.teal,
+    greeting:    "Привет! Давай создадим контент, который взорвёт ленту. Какова твоя ниша?",
+    locked:      false,
+  },
 
-  // ── PREMIUM (coming soon) ────────────────────────────────
+  // ── PREMIUM ─────────────────────────────────────────────
   {
     id:          "prophet",
     webhookName: "prophet",
@@ -112,10 +125,11 @@ export const AI_CHARACTERS = [
 export type CharacterId = (typeof AI_CHARACTERS)[number]["id"];
 
 // ─── Navigation ───────────────────────────────────────────
+// /lobby is intentionally absent — accessed via secret long press
 export const NAV_ITEMS = [
-  { id: "lobby",   label: "ЛОББИ",   path: "/",        icon: "Users"         },
-  { id: "browser", label: "БРАУЗЕР", path: "/browser",  icon: "Globe"         },
-  { id: "chats",   label: "СВЯЗЬ",   path: "/chats",    icon: "MessageSquare" },
-  { id: "feed",    label: "ЛЕНТА",   path: "/feed",     icon: "Radio"         },
-  { id: "profile", label: "ПРОФИЛЬ", path: "/profile",  icon: "UserCircle"    },
+  { id: "prompts",  label: "ПРОМПТЫ",  path: "/",        icon: "Sparkles"      },
+  { id: "browser",  label: "БРАУЗЕР",  path: "/browser",  icon: "Globe"         },
+  { id: "chats",    label: "СВЯЗЬ",    path: "/chats",    icon: "MessageSquare" },
+  { id: "feed",     label: "ЛЕНТА",    path: "/feed",     icon: "Radio"         },
+  { id: "profile",  label: "ПРОФИЛЬ",  path: "/profile",  icon: "UserCircle"    },
 ] as const;
