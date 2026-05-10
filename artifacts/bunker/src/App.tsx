@@ -5,17 +5,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 
-import { BottomNav }          from "@/components/layout/BottomNav";
-import Login                  from "@/pages/Login";
-import Characters             from "@/pages/Characters";
+import { BottomNav }           from "@/components/layout/BottomNav";
+import Login                   from "@/pages/Login";
+import Characters              from "@/pages/Characters";
 import Chat                   from "@/pages/Chat";
-import Browser                from "@/pages/Browser";
-import ChatsList              from "@/pages/ChatsList";
-import Feed                   from "@/pages/Feed";
-import Profile                from "@/pages/Profile";
-import PromptFeed             from "@/pages/PromptFeed";
-import CharacterCustomizer    from "@/pages/CharacterCustomizer";
-import NotFound               from "@/pages/not-found";
+import Browser                 from "@/pages/Browser";
+import ChatsList               from "@/pages/ChatsList";
+import Feed                    from "@/pages/Feed";
+import Profile                 from "@/pages/Profile";
+import PromptFeed              from "@/pages/PromptFeed";
+import CharacterCustomizer     from "@/pages/CharacterCustomizer";
+import SecretArchive           from "@/pages/SecretArchive";
+import ContentProducerChat     from "@/pages/ContentProducerChat";
+import NotFound                from "@/pages/not-found";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -47,44 +49,40 @@ function Router() {
 
   return (
     <Switch>
-      {/* ── Tab 1: Personnel ── */}
+      {/* ── Tabs ── */}
       <Route path="/">
         <MainLayout><Characters /></MainLayout>
       </Route>
-
-      {/* ── Tab 2: Browser ── */}
       <Route path="/browser">
         <MainLayout><Browser /></MainLayout>
       </Route>
-
-      {/* ── Tab 3: Chats ── */}
       <Route path="/chats">
         <MainLayout><ChatsList /></MainLayout>
       </Route>
-
-      {/* ── Tab 4: Content & Factory ── */}
       <Route path="/feed">
         <MainLayout><Feed /></MainLayout>
       </Route>
-
-      {/* ── Tab 5: Profile ── */}
       <Route path="/profile">
         <MainLayout><Profile /></MainLayout>
       </Route>
 
-      {/* ── Prompts (accessed from Feed) ── */}
+      {/* ── Sub-pages (with nav) ── */}
       <Route path="/prompts">
         <MainLayout><PromptFeed /></MainLayout>
       </Route>
 
-      {/* ── Character Customizer ── */}
+      {/* ── Full-screen detail (no nav) ── */}
+      <Route path="/chat/:id">
+        <ProtectedLayout><Chat /></ProtectedLayout>
+      </Route>
       <Route path="/character-create">
         <ProtectedLayout><CharacterCustomizer /></ProtectedLayout>
       </Route>
-
-      {/* ── AI Chat (detail, no nav) ── */}
-      <Route path="/chat/:id">
-        <ProtectedLayout><Chat /></ProtectedLayout>
+      <Route path="/secret-archive">
+        <ProtectedLayout><SecretArchive /></ProtectedLayout>
+      </Route>
+      <Route path="/producer">
+        <ProtectedLayout><ContentProducerChat /></ProtectedLayout>
       </Route>
 
       <Route component={NotFound} />
