@@ -3,31 +3,29 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 
-import { BottomNav }   from "@/components/layout/BottomNav";
-import Login           from "@/pages/Login";
-import PromptFeed      from "@/pages/PromptFeed";
-import Characters      from "@/pages/Characters";
-import Chat            from "@/pages/Chat";
-import Browser         from "@/pages/Browser";
-import ChatsList       from "@/pages/ChatsList";
-import Feed            from "@/pages/Feed";
-import Profile         from "@/pages/Profile";
-import NotFound        from "@/pages/not-found";
+import { BottomNav }          from "@/components/layout/BottomNav";
+import Login                  from "@/pages/Login";
+import Characters             from "@/pages/Characters";
+import Chat                   from "@/pages/Chat";
+import Browser                from "@/pages/Browser";
+import ChatsList              from "@/pages/ChatsList";
+import Feed                   from "@/pages/Feed";
+import Profile                from "@/pages/Profile";
+import PromptFeed             from "@/pages/PromptFeed";
+import CharacterCustomizer    from "@/pages/CharacterCustomizer";
+import NotFound               from "@/pages/not-found";
 
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const { bg } = useTheme();
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
-      <main className="mx-auto max-w-md bg-black min-h-screen shadow-2xl relative overflow-x-hidden">
+    <div className="min-h-screen text-foreground selection:bg-primary/30" style={{ background: bg }}>
+      <main className="mx-auto max-w-md min-h-screen shadow-2xl relative overflow-x-hidden" style={{ background: bg }}>
         {children}
       </main>
     </div>
@@ -45,38 +43,46 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
 function Router() {
   const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Login />;
-  }
+  if (!isAuthenticated) return <Login />;
 
   return (
     <Switch>
-      {/* ── Facade home ── */}
+      {/* ── Tab 1: Personnel ── */}
       <Route path="/">
-        <MainLayout><PromptFeed /></MainLayout>
-      </Route>
-
-      {/* ── Secret: AI Lobby — accessed via long press on ПРОМПТЫ header ── */}
-      <Route path="/lobby">
         <MainLayout><Characters /></MainLayout>
       </Route>
 
-      {/* ── Visible tabs ── */}
+      {/* ── Tab 2: Browser ── */}
       <Route path="/browser">
         <MainLayout><Browser /></MainLayout>
       </Route>
+
+      {/* ── Tab 3: Chats ── */}
       <Route path="/chats">
         <MainLayout><ChatsList /></MainLayout>
       </Route>
+
+      {/* ── Tab 4: Content & Factory ── */}
       <Route path="/feed">
         <MainLayout><Feed /></MainLayout>
       </Route>
+
+      {/* ── Tab 5: Profile ── */}
       <Route path="/profile">
         <MainLayout><Profile /></MainLayout>
       </Route>
 
-      {/* ── Detail views (no nav bar) ── */}
+      {/* ── Prompts (accessed from Feed) ── */}
+      <Route path="/prompts">
+        <MainLayout><PromptFeed /></MainLayout>
+      </Route>
+
+      {/* ── Character Customizer ── */}
+      <Route path="/character-create">
+        <ProtectedLayout><CharacterCustomizer /></ProtectedLayout>
+      </Route>
+
+      {/* ── AI Chat (detail, no nav) ── */}
       <Route path="/chat/:id">
         <ProtectedLayout><Chat /></ProtectedLayout>
       </Route>
@@ -89,12 +95,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

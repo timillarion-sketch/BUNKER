@@ -1,10 +1,10 @@
 const ru = {
   nav: {
-    prompts: "ПРОМПТЫ",
-    browser: "БРАУЗЕР",
-    chats:   "СВЯЗЬ",
-    feed:    "ЛЕНТА",
-    profile: "ПРОФИЛЬ",
+    personnel: "ПЕРСОНАЛ",
+    browser:   "БРАУЗЕР",
+    chats:     "СВЯЗЬ",
+    feed:      "КОНТЕНТ",
+    profile:   "ПРОФИЛЬ",
   },
 
   login: {
@@ -15,12 +15,17 @@ const ru = {
     yandexBio:  "Биометрия Яндекс",
   },
 
-  characters: {
+  personnel: {
     nodeStatus:  "УЗЕЛ: АЛЬФА",
     onlineCount: "{{count}} АГЕНТОВ ОНЛАЙН",
-    header:      "ИИ ЛОББИ",
-    premium:     "Premium",
-    locked:      "Недоступно",
+    header:      "ПЕРСОНАЛ",
+    subheader:   "Управление агентами",
+    active:      "Активные",
+    pro:         "Pro Агенты",
+    premium:     "Pro",
+    locked:      "Pro Feature",
+    createOwn:   "Создать своего",
+    createDesc:  "Настрой внешность, голос и личность",
     status: {
       online:  "Онлайн",
       busy:    "Занят",
@@ -43,10 +48,8 @@ const ru = {
     trackers:         "{{count}} ТРЕКЕРА",
     blocked:          "{{count}} заблокировано",
     shieldActive:     "Щит активен",
-
     tabAnalysis:      "Анализ",
     tabCookies:       "Куки",
-
     runAnalysis:      "Запустить анализ",
     analysisIdleDesc: "Нажмите кнопку для запуска нейронного анализа текущей страницы.",
     analyzing:        "Извлечение данных...",
@@ -55,12 +58,7 @@ const ru = {
     coreSynthesis:    "Основной синтез",
     vectors:          "Ключевые факты",
     error:            "[ОШИБКА] Нейросвязь разорвана. Цель блокирует доступ.",
-    risk: {
-      low:    "НИЗКИЙ",
-      medium: "СРЕДНИЙ",
-      high:   "ВЫСОКИЙ",
-    },
-
+    risk: { low: "НИЗКИЙ", medium: "СРЕДНИЙ", high: "ВЫСОКИЙ" },
     cookieManager:   "Менеджер Куки",
     cookiesFound:    "{{count}} куки найдено",
     deleteAll:       "Удалить всё",
@@ -80,36 +78,63 @@ const ru = {
   },
 
   feed: {
-    header:     "Лента",
-    subheader:  "Входящая трансляция",
-    comingSoon: "Приватные Ролики — Скоро",
-    desc:       "Готовится зашифрованная видеолента. Весь контент будет защищён от слежки.",
-    loading:    "ЗАГРУЗКА МОДУЛЯ",
+    header:       "КОНТЕНТ",
+    subheader:    "Студия и Лента",
+    videosTitle:  "Приватные ролики",
+    videosSoon:   "Скоро...",
+    videosDesc:   "Зашифрованная видеолента в разработке. Контент под полной защитой.",
+    promptsBtn:   "Промпты и идеи",
+    promptsDesc:  "Библиотека ИИ-шаблонов",
+  },
+
+  customizer: {
+    header:       "Создать персонажа",
+    stepAppear:   "Внешность",
+    stepVoice:    "Голос",
+    stepAtmos:    "Атмосфера",
+    stepResult:   "Результат",
+    namePlaceholder: "Имя персонажа...",
+    eyeShape:     "Форма глаз",
+    eyeColor:     "Цвет глаз",
+    eyebrows:     "Брови",
+    makeup:       "Макияж",
+    voiceType:    "Тип голоса",
+    personality:  "Личность",
+    bgStyle:      "Стиль фона",
+    accentColor:  "Акцентный цвет",
+    promptLabel:  "Генерация промпта",
+    next:         "Далее",
+    back:         "Назад",
+    generate:     "Создать персонажа",
+    freeTier:     "Free — Кастомизация, без изображения",
+    liteTier:     "Lite — Генерация изображения + голос",
+    proTier:      "Pro — Все персонажи + создание",
+    startChat:    "Начать общение",
+    unlockImage:  "Разблокировать изображение",
   },
 
   profile: {
     header:    "Профиль",
     operative: "Оперативник",
     logout:    "Выйти",
-
     verify:       "Верификация личности",
     vkLinked:     "VK ID — ПРИВЯЗАН",
     yandexLinked: "ЯНДЕКС ID — ПРИВЯЗАН",
-
     ghostMode:        "Призрак Режим",
-    ghostModeDesc:    "Сообщения остаются только на устройстве. Сеть не задействована.",
-
+    ghostModeDesc:    "Сообщения остаются только на устройстве.",
+    themeToggle:      "Атмосфера фона",
+    themeToggleDesc:  "Переключить между глубокой тьмой и тех-серым",
+    themeDark:        "Глубокая тьма",
+    themeTechgray:    "Тех-серый",
     privacy:           "Настройки",
     notifications:    "Уведомления",
     notificationsDesc: "Системные push-уведомления",
     screenshots:      "Скриншоты",
     screenshotsDesc:  "Разрешить захват экрана приложения",
-
     apiEndpoint: "API-Эндпоинт",
     save:        "СОХРАНИТЬ",
-
     protocolZero: "Протокол Ноль",
-    protocolDesc: "Стирает всё локальное состояние, ключи, кеш и данные сессии. Двойное нажатие для подтверждения. Необратимо.",
+    protocolDesc: "Стирает всё локальное состояние, ключи, кеш и данные сессии. Необратимо.",
     selfDestruct: "САМОУНИЧТОЖЕНИЕ",
     tapAgain:     "НАЖМИТЕ ЕЩЁ РАЗ",
     detonating:   "ПОДРЫВ ЧЕРЕЗ {{count}}...",
