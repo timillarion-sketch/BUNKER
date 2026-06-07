@@ -1,35 +1,60 @@
-import { Router, type IRouter, type Request, type Response } from "express";
+import { Router, type IRouter, type Response } from "express";
 import { subscribe } from "../lib/sse-events";
+import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
+import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-router.get("/events", (req: Request, res: Response) => {
+const MAX_SSE_CONNECTIONS = 100;
+
+let activeConnections = 0;
+
+router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  if (activeConnections >= MAX_SSE_CONNECTIONS) {
+    res.status(503).json({ error: "Server busy, too many connections" });
+    return;
+  }
+
+  activeConnections++;
+
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
+    "Cache-Control": "no-cache, no-transform",
     Connection: "keep-alive",
     "X-Accel-Buffering": "no",
   });
 
-  res.write(":ok\n\n");
+  res.write(":connected\n\n");
 
-  const unsubContact = subscribe("contact", (data) => {
+  const userId = req.userId ?? null;
+
+  const unsubContact = subscribe("contact", userId, (data) => {
     res.write(`event: contact\ndata: ${JSON.stringify(data)}\n\n`);
   });
 
-  const unsubMessage = subscribe("message", (data) => {
+  const unsubMessage = subscribe("message", userId, (data) => {
     res.write(`event: message\ndata: ${JSON.stringify(data)}\n\n`);
   });
 
   const keepAlive = setInterval(() => {
-    res.write(":keepalive\n\n");
-  }, 15000);
+    try {
+      res.write(":keepalive\n\n");
+    } catch {
+      cleanup();
+    }
+  }, 15_000);
 
-  req.on("close", () => {
+  const cleanup = () => {
     unsubContact();
     unsubMessage();
     clearInterval(keepAlive);
-  });
+    activeConnections = Math.max(0, activeConnections - 1);
+  };
+
+  req.on("close", cleanup);
+  req.on("error", cleanup);
+
+  logger.debug({ userId }, "SSE connection established");
 });
 
 export default router;
