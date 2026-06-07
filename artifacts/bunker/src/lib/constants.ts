@@ -2,8 +2,8 @@
 // BUNKER — Central Config
 // ─────────────────────────────────────────────────────────
 
-export const API_BASE_URL = "/api";
-// n8n calls go through /api/ai/chat (server-side proxy), never directly from frontend
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
+// All API calls go through lib/api.ts — never call fetch() directly
 
 export const CHARACTER_ID_MAP: Record<string, string> = {
   psychologist: "psycho",

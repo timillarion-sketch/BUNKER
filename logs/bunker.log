@@ -144,3 +144,22 @@ Instead of /public/.env, use /.env.
 5:35:43 PM [vite] (client) hmr update /src/index.css, /src/components/HandbookAccordion.tsx
 5:35:47 PM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
 5:35:51 PM [vite] (client) page reload src/i18n/ru.ts
+5:42:36 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/pages/Chat.tsx, /src/pages/Feed.tsx, /src/pages/Browser.tsx, /src/pages/Profile.tsx, /src/pages/PromptFeed.tsx, /src/pages/Login.tsx, /src/pages/SecretArchive.tsx, /src/pages/ContentProducerChat.tsx, /src/pages/CharacterCustomizer.tsx, /src/components/layout/BottomNav.tsx, /src/pages/Characters.tsx, /src/components/HandbookAccordion.tsx, /src/index.css
+5:42:44 PM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+5:42:49 PM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+5:42:52 PM [vite] (client) hmr update /src/pages/ContentProducerChat.tsx, /src/index.css
+5:42:57 PM [vite] (client) hmr update /src/pages/ContentProducerChat.tsx, /src/index.css
+5:43:01 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+5:43:06 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+5:43:19 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+5:43:27 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+5:43:32 PM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+5:43:36 PM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+5:43:54 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+5:43:58 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+5:44:05 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+5:44:11 PM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+5:44:15 PM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+5:44:24 PM [vite] (client) hmr update /src/pages/Browser.tsx, /src/index.css
+5:44:30 PM [vite] (client) hmr update /src/pages/Browser.tsx, /src/index.css
+5:45:36 PM [vite] (client) hmr update /src/pages/Browser.tsx, /src/index.css

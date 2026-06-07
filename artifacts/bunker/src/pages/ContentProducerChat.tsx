@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Send, RefreshCw, Sparkles, Copy, Check } from "lucide-react";
-import { T, CHARACTER_ID_MAP, getUserId, API_BASE_URL } from "@/lib/constants";
+import { T, CHARACTER_ID_MAP } from "@/lib/constants";
+import { api } from "@/lib/api";
 import { useTheme } from "@/context/ThemeContext";
 
 // ── Branch tree ───────────────────────────────────────────
@@ -61,18 +62,11 @@ interface Msg {
 }
 
 async function sendToBackend(message: string): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/ai/chat`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ message, userId: getUserId(), characterId: CHARACTER_ID_MAP["content-producer"] }),
+  const data = await api.post<{ reply: string }>("/ai/chat", {
+    message,
+    characterId: CHARACTER_ID_MAP["content-producer"],
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
-  }
-  const data = await res.json();
-  if (!data.reply) throw new Error("no reply");
-  return String(data.reply);
+  return data.reply;
 }
 
 // ── Message bubble ────────────────────────────────────────

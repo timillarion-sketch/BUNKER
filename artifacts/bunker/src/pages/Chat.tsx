@@ -3,7 +3,8 @@ import { useParams, useLocation } from "wouter";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Flame, ChevronLeft, ShieldCheck, AlertTriangle, Ghost } from "lucide-react";
-import { AI_CHARACTERS, T, CHARACTER_ID_MAP, getUserId, API_BASE_URL } from "@/lib/constants";
+import { AI_CHARACTERS, T, CHARACTER_ID_MAP } from "@/lib/constants";
+import { api } from "@/lib/api";
 import { useGhostMode } from "@/hooks/use-ghost-mode";
 import { useTranslation } from "react-i18next";
 
@@ -17,18 +18,8 @@ interface Msg {
 
 // ── AI chat via backend proxy ──────────────────────────────
 async function sendToBackend(characterId: string, message: string): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/ai/chat`, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ message, userId: getUserId(), characterId }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
-  }
-  const data = await res.json();
-  if (!data.reply) throw new Error("no reply field");
-  return String(data.reply);
+  const data = await api.post<{ reply: string }>("/ai/chat", { message, characterId });
+  return data.reply;
 }
 
 // ── Component ──────────────────────────────────────────────

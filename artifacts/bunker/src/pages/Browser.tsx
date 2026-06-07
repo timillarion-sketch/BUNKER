@@ -6,53 +6,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { T } from "@/lib/constants";
+import { AD_BLOCK_CSS, AD_SELECTORS, generateCookies, type CookieEntry } from "@/lib/fixtures";
 import { useTranslation } from "react-i18next";
-
-// ─── Ad-block selectors (aggressive) ─────────────────────
-const AD_SELECTORS = [
-  "[id*='ad']", "[id*='ads']", "[id*='AD']", "[id*='banner']", "[id*='Banner']",
-  "[class*='ad-']", "[class*='-ad']", "[class*='ads-']", "[class*='advert']",
-  "[class*='banner']", "[class*='Banner']", "[class*='popup']", "[class*='Popup']",
-  "[class*='overlay']", "[class*='interstitial']", "[class*='sponsored']",
-  "[class*='promo']", "[class*='promoted']", "[class*='outbrain']",
-  "[class*='taboola']", "[class*='teaser']", "[class*='widget-ad']",
-  "iframe[src*='doubleclick']", "iframe[src*='googlesyndication']",
-  "iframe[src*='adservice']", "iframe[src*='amazon-adsystem']",
-  "iframe[src*='outbrain']", "iframe[src*='taboola']",
-  "ins.adsbygoogle", ".yandex-ad", "[data-ad]", "[data-ads]",
-  "[data-advertisement]", "[data-sponsored]",
-].join(",");
-
-const AD_BLOCK_CSS = `
-  ${AD_SELECTORS} { display: none !important; visibility: hidden !important; height: 0 !important; }
-  .cookie-notice, .cookie-banner, .gdpr-banner, #cookie-notice,
-  #cookie-banner, [class*="cookie-consent"], [id*="cookie-consent"],
-  [class*="gdpr"], [id*="gdpr"], .cc-window, #CybotCookiebotDialog { display: none !important; }
-`;
-
-// ─── Cookie helpers ───────────────────────────────────────
-interface CookieEntry { name: string; value: string; expires: string; secure: boolean; httpOnly: boolean; }
-
-function makeCookies(host: string): CookieEntry[] {
-  const rnd = (n = 16) => Math.random().toString(36).slice(2, 2 + n);
-  const futureDate = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + Math.floor(Math.random() * 365 + 30));
-    return d.toLocaleDateString("ru");
-  };
-  const pool: CookieEntry[] = [
-    { name: "_ga",         value: `GA1.2.${rnd(10)}.${Date.now()}`, expires: futureDate(), secure: false, httpOnly: false },
-    { name: "_gid",        value: `GA1.2.${rnd(12)}`,               expires: futureDate(), secure: false, httpOnly: false },
-    { name: "session_id",  value: rnd(24),                          expires: "По окончании сессии", secure: true,  httpOnly: true  },
-    { name: "csrf_token",  value: rnd(32),                          expires: "По окончании сессии", secure: true,  httpOnly: false },
-    { name: "user_pref",   value: `lang=ru&theme=dark&ts=${Date.now()}`, expires: futureDate(), secure: false, httpOnly: false },
-    { name: "_fbp",        value: `fb.1.${Date.now()}.${rnd(10)}`,  expires: futureDate(), secure: false, httpOnly: false },
-    { name: "ym_uid",      value: rnd(16),                          expires: futureDate(), secure: false, httpOnly: false },
-    { name: "ab_group",    value: String(Math.floor(Math.random() * 10)), expires: futureDate(), secure: false, httpOnly: false },
-  ];
-  const count = 2 + Math.floor(Math.random() * (pool.length - 2));
-  return pool.slice(0, count);
-}
 
 function getHostname(url: string) { try { return new URL(url).hostname; } catch { return url; } }
 
@@ -372,7 +327,7 @@ export default function Browser() {
     if (!host || host === currentUrl) return;
     setCookieStore(prev => ({
       ...prev,
-      [host]: prev[host] ?? makeCookies(host),
+      [host]: prev[host] ?? generateCookies(),
     }));
   }, []);
 
