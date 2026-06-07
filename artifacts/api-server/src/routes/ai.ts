@@ -41,7 +41,7 @@ router.post("/ai/chat", async (req: Request, res: Response) => {
       return;
     }
 
-    const data = await response.json();
+    const data = await response.json() as Record<string, unknown>;
     const reply = data?.reply ?? data?.message ?? data?.text ?? data?.output ?? null;
 
     if (!reply) {
