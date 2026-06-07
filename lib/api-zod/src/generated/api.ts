@@ -88,3 +88,24 @@ export const AnalyzePageResponse = zod.object({
   keyPoints: zod.array(zod.string()),
   privacyRisk: zod.enum(["low", "medium", "high"]),
 });
+
+/**
+ * @summary Add a contact (send friend request)
+ */
+export const AddContactBody = zod.object({
+  userId: zod.string().min(1),
+});
+
+export const ContactResponse = zod.object({
+  id: zod.number(),
+  requesterId: zod.string(),
+  addresseeId: zod.string(),
+  status: zod.string(),
+  createdAt: zod.string().nullable(),
+});
+
+export const ListContactsResponse = zod.array(ContactResponse);
+
+export const ErrorResponse = zod.object({
+  error: zod.string(),
+});

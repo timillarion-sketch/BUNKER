@@ -1,11 +1,13 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Shield, Plus, Radio, Wifi, Hexagon } from "lucide-react";
-import { T } from "@/lib/constants";
+import { Lock, Shield, Plus, Radio, Wifi, Hexagon, X, UserPlus } from "lucide-react";
+import { T, getUserId } from "@/lib/constants";
 import { useSecretPin } from "@/hooks/use-secret-pin";
 import { PinModal } from "@/components/PinModal";
 import { useTranslation } from "react-i18next";
+import { useRealtime } from "@/hooks/use-realtime";
+import { useToast } from "@/hooks/use-toast";
 
 const CONVERSATIONS = [
   { id: "c1", name: "Agent K",  color: "#00f0ff", lastMsg: "Точка сброса закреплена. Жду сигнала.",      time: "14:23",   unread: 2, encrypted: true  },
@@ -177,13 +179,147 @@ function MeshBar() {
   );
 }
 
+// ── Add Contact Modal ──────────────────────────────────────
+function AddContactModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { t } = useTranslation();
+  const [userId, setUserId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    if (!userId.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userId.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        if (res.status === 400) throw new Error(t("chats.errorSelf"));
+        if (res.status === 409) throw new Error(t("chats.errorExists"));
+        throw new Error(body.error || t("chats.errorGeneric"));
+      }
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("chats.errorGeneric"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="w-full max-w-sm rounded-sm overflow-hidden"
+        style={{ background: "#0a0a0a", border: "1px solid rgba(255,0,204,0.3)", boxShadow: "0 0 40px rgba(255,0,204,0.1)" }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <h2 className="font-display font-bold text-lg text-white uppercase tracking-wider"
+            style={{ textShadow: "0 0 12px rgba(255,0,204,0.4)" }}>
+            {t("chats.addContact")}
+          </h2>
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-5 pb-5 space-y-4">
+          <div>
+            <input
+              value={userId}
+              onChange={e => setUserId(e.target.value)}
+              placeholder={t("chats.userIdPlaceholder")}
+              onKeyDown={e => e.key === "Enter" && handleSubmit()}
+              className="w-full px-4 py-3 rounded-sm text-sm font-sans text-white outline-none transition-all"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,0,204,0.2)" }}
+              autoFocus
+            />
+          </div>
+          {error && (
+            <p className="text-[11px] font-sans" style={{ color: "#ff3366" }}>{error}</p>
+          )}
+          <motion.button
+            onClick={handleSubmit}
+            disabled={loading || !userId.trim()}
+            whileTap={{ scale: 0.97 }}
+            className="w-full py-3 font-display font-bold text-xs uppercase tracking-[0.15em] rounded-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            style={{
+              background: "rgba(255,0,204,0.12)",
+              border: "1px solid rgba(255,0,204,0.4)",
+              color: "#ff00cc",
+              boxShadow: "0 0 20px rgba(255,0,204,0.08)",
+            }}>
+            {loading ? (
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                <Radio className="w-3.5 h-3.5" />
+              </motion.div>
+            ) : (
+              <UserPlus className="w-3.5 h-3.5" />
+            )}
+            {loading ? "..." : t("chats.sendRequest")}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────
 export default function ChatsList() {
   const { t }        = useTranslation();
   const [, navigate] = useLocation();
   const { hasPinSet } = useSecretPin();
+  const { toast }    = useToast();
 
   const [pinModal, setPinModal] = useState<"setup" | "verify" | null>(null);
+  const [addModal, setAddModal] = useState(false);
+  const [conversations, setConversations] = useState(CONVERSATIONS);
+
+  const fetchAndUpdateContacts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/contacts");
+      const data = await res.json();
+      setConversations(prev => {
+        const existingIds = new Set(prev.map(c => c.id));
+        const newContacts = data
+          .filter((c: { requesterId: string; addresseeId: string; status: string }) => c.status === "pending" && c.addresseeId !== "default_user")
+          .filter((c: { id: number }) => !existingIds.has(`c_${c.id}`))
+          .map((c: { id: number; addresseeId: string; createdAt: string }) => ({
+            id: `c_${c.id}`,
+            name: c.addresseeId,
+            color: "#ff00cc",
+            lastMsg: "Запрос на переписку",
+            time: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : "",
+            unread: 1,
+            encrypted: true,
+          }));
+        if (newContacts.length === 0) return prev;
+        return [...newContacts, ...prev];
+      });
+    } catch { /* ignore */ }
+  }, []);
+
+  useRealtime({
+    onContact: (data) => {
+      if (data?.type === "created" && data?.contact) {
+        const uid = getUserId();
+        if (data.contact.addresseeId === uid) {
+          toast({
+            title: "Новый запрос в контакты",
+            description: `Пользователь ${data.contact.requesterId} хочет добавить вас в контакты`,
+          });
+        }
+      }
+      fetchAndUpdateContacts();
+    },
+  });
 
   // ── Long-press on header (800ms, snappy) ──────────────
   const holdTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -287,6 +423,7 @@ export default function ChatsList() {
 
       {/* FAB */}
       <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+        onClick={() => setAddModal(true)}
         className="fixed bottom-24 right-5 z-30 rounded-full flex items-center justify-center p-3.5"
         style={{ background: "rgba(255,0,204,0.12)", border: "1px solid rgba(255,0,204,0.4)", boxShadow: T.glow("#ff00cc") }}>
         <Plus className="w-5 h-5" style={{ color: "#ff00cc" }} />
@@ -299,6 +436,33 @@ export default function ChatsList() {
             mode={pinModal}
             onSuccess={onPinSuccess}
             onCancel={() => setPinModal(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Add Contact Modal */}
+      <AnimatePresence>
+        {addModal && (
+          <AddContactModal
+            onClose={() => setAddModal(false)}
+            onSuccess={() => {
+              fetch("/api/contacts").then(r => r.json()).then(data => {
+                setConversations(prev => {
+                  const newContacts = data
+                    .filter((c: { requesterId: string; addresseeId: string; status: string }) => c.status === "pending" && c.addresseeId !== "default_user")
+                    .map((c: { id: number; addresseeId: string; createdAt: string }) => ({
+                      id: `c_${c.id}`,
+                      name: c.addresseeId,
+                      color: "#ff00cc",
+                      lastMsg: "Запрос на переписку",
+                      time: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : "",
+                      unread: 1,
+                      encrypted: true,
+                    }));
+                  return [...newContacts, ...prev];
+                });
+              });
+            }}
           />
         )}
       </AnimatePresence>

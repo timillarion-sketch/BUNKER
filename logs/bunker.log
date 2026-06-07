@@ -1,0 +1,146 @@
+
+> @workspace/bunker@0.0.0 dev /root/bunker-app/artifacts/bunker
+> vite --config vite.config.ts --host 0.0.0.0
+
+
+  VITE v7.3.1  ready in 1051 ms
+
+  ➜  Local:   http://localhost:19890/
+  ➜  Network: http://176.12.72.246:19890/
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/config.js, use /config.js.
+Files in the public directory are served at the root path.
+Instead of /public/.env, use /.env.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+The request id "/proc/self/environ" is outside of Vite serving allow list.
+
+- /root/bunker-app
+
+Refer to docs https://vite.dev/config/server-options.html#server-fs-allow for configurations and more details.
+
+The request id "/root/.bash_history" is outside of Vite serving allow list.
+The request id "/proc/self/environ" is outside of Vite serving allow list.
+The request id "/root/.bash_history" is outside of Vite serving allow list.
+The request id "/proc/self/environ" is outside of Vite serving allow list.
+The request id "/proc/self/environ" is outside of Vite serving allow list.
+The request id "/root/.claude/settings.json" is outside of Vite serving allow list.
+The request id "/root/.bashrc" is outside of Vite serving allow list.
+The request id "/root/.profile" is outside of Vite serving allow list.
+Files in the public directory are served at the root path.
+Instead of /public/.env, use /.env.
+Files in the public directory are served at the root path.
+Instead of /public/.env, use /.env.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+1:36:23 AM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+1:36:28 AM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+1:36:39 AM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+1:36:56 AM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+1:37:04 AM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+1:37:09 AM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+1:37:19 AM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+1:37:32 AM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+1:37:37 AM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+1:37:51 AM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+1:38:09 AM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+1:38:14 AM [vite] (client) hmr update /src/pages/SecretArchive.tsx, /src/index.css
+The request id "/etc/services" is outside of Vite serving allow list.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/static/favicon.png, use /static/favicon.png.
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+6:51:13 PM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+6:51:16 PM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+6:51:25 PM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+6:52:22 PM [vite] (client) ✨ new dependencies optimized: @radix-ui/react-accordion, @radix-ui/react-collapsible
+6:52:22 PM [vite] (client) ✨ optimized dependencies changed. reloading
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+12:53:10 AM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/pages/Chat.tsx, /src/pages/Feed.tsx, /src/pages/Browser.tsx, /src/pages/Profile.tsx, /src/pages/PromptFeed.tsx, /src/pages/Login.tsx, /src/pages/SecretArchive.tsx, /src/pages/ContentProducerChat.tsx, /src/pages/CharacterCustomizer.tsx, /src/components/layout/BottomNav.tsx, /src/pages/Characters.tsx, /src/components/HandbookAccordion.tsx, /src/index.css
+12:53:13 AM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+12:53:17 AM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+12:53:20 AM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+12:53:23 AM [vite] (client) hmr update /src/pages/ContentProducerChat.tsx, /src/index.css
+12:53:27 AM [vite] (client) hmr update /src/pages/ContentProducerChat.tsx, /src/index.css
+12:53:29 AM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+12:53:37 AM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+12:53:40 AM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+12:53:43 AM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/index.css
+1:35:34 AM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Files in the public directory are served at the root path.
+Instead of /public/.env, use /.env.
+5:34:29 PM [vite] (client) hmr update /src/pages/ChatsList.tsx, /src/pages/Chat.tsx, /src/pages/Feed.tsx, /src/pages/Browser.tsx, /src/pages/Profile.tsx, /src/pages/PromptFeed.tsx, /src/pages/Login.tsx, /src/pages/SecretArchive.tsx, /src/pages/ContentProducerChat.tsx, /src/pages/CharacterCustomizer.tsx, /src/components/layout/BottomNav.tsx, /src/pages/Characters.tsx, /src/components/HandbookAccordion.tsx, /src/index.css
+5:34:42 PM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+5:34:47 PM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+5:34:51 PM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+5:34:53 PM [vite] (client) hmr update /src/pages/ContentProducerChat.tsx, /src/index.css
+5:34:58 PM [vite] (client) hmr update /src/pages/ContentProducerChat.tsx, /src/index.css
+5:35:01 PM [vite] (client) hmr update /src/pages/ContentProducerChat.tsx, /src/index.css
+5:35:07 PM [vite] (client) page reload src/i18n/ru.ts
+5:35:10 PM [vite] (client) page reload src/i18n/ru.ts
+5:35:14 PM [vite] (client) page reload src/i18n/ru.ts
+5:35:18 PM [vite] (client) page reload src/i18n/ru.ts
+5:35:21 PM [vite] (client) hmr update /src/index.css, /src/components/HandbookAccordion.tsx
+5:35:24 PM [vite] (client) hmr update /src/pages/Feed.tsx, /src/index.css
+5:35:30 PM [vite] (client) hmr update /src/index.css, /src/components/HandbookAccordion.tsx
+5:35:40 PM [vite] (client) hmr update /src/index.css, /src/components/HandbookAccordion.tsx
+5:35:43 PM [vite] (client) hmr update /src/index.css, /src/components/HandbookAccordion.tsx
+5:35:47 PM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+5:35:51 PM [vite] (client) page reload src/i18n/ru.ts

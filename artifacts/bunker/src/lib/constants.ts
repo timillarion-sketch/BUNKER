@@ -3,7 +3,23 @@
 // ─────────────────────────────────────────────────────────
 
 export const API_BASE_URL = "/api";
-export const N8N_WEBHOOK  = "https://timhook.app.n8n.cloud/webhook/bunker-chat";
+// n8n calls go through /api/ai/chat (server-side proxy), never directly from frontend
+
+export const CHARACTER_ID_MAP: Record<string, string> = {
+  psychologist: "psycho",
+  altushka: "altushka",
+  alfons: "alfons",
+  "content-producer": "producer",
+};
+
+export function getUserId(): string {
+  let id = localStorage.getItem("bunker_user_id");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("bunker_user_id", id);
+  }
+  return id;
+}
 
 // ─── Glow helpers ─────────────────────────────────────────
 export const T = {

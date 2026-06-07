@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Archive, Plus, Trash2, EyeOff, Timer, Lock } from "lucide-react";
+import { ChevronLeft, Archive, Trash2, EyeOff, Timer, Lock, UserPlus, User, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { T } from "@/lib/constants";
 
@@ -149,23 +149,145 @@ function ArchiveChatRow({ chat, onDelete }: { chat: ArchiveChat; onDelete: () =>
   );
 }
 
-// ── New Incognito Chat button ─────────────────────────────
-function NewIncognitoButton({ onClick }: { onClick: () => void }) {
+// ── Pick Contact Modal ────────────────────────────────────
+function PickContactModal({ onClose, onSelect }: { onClose: () => void; onSelect: (name: string) => void }) {
+  const [contacts, setContacts] = useState<{ id: number; addresseeId: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/contacts")
+      .then(r => r.json())
+      .then(data => setContacts(data.filter((c: { status: string }) => c.status === "pending")))
+      .catch(() => {});
+  }, []);
+
   return (
-    <motion.button
-      whileTap={{ scale: 0.96 }}
-      onClick={onClick}
-      className="w-full py-3 flex items-center justify-center gap-2 rounded-sm transition-all"
-      style={{
-        background: "rgba(255,51,102,0.04)",
-        border:     "1px dashed rgba(255,51,102,0.2)",
-      }}
-    >
-      <EyeOff className="w-3.5 h-3.5" style={{ color: "rgba(255,51,102,0.4)" }} />
-      <span className="font-tech text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,51,102,0.4)" }}>
-        Новый инкогнито чат
-      </span>
-    </motion.button>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="w-full max-w-sm rounded-sm overflow-hidden"
+        style={{ background: "#0a0a0a", border: "1px solid rgba(255,51,102,0.3)", boxShadow: "0 0 40px rgba(255,51,102,0.1)" }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <h2 className="font-display font-bold text-sm text-white uppercase tracking-wider"
+            style={{ textShadow: "0 0 12px rgba(255,51,102,0.4)" }}>
+            Выбрать из контактов
+          </h2>
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-5 pb-5 max-h-60 overflow-y-auto no-scrollbar space-y-2">
+          {contacts.length === 0 && (
+            <p className="font-tech text-[10px] text-gray-600 text-center py-4">Нет доступных контактов</p>
+          )}
+          {contacts.map(c => (
+            <motion.button key={c.id} whileTap={{ scale: 0.97 }}
+              onClick={() => { onSelect(c.addresseeId); onClose(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-sm text-left transition-all"
+              style={{ background: "rgba(255,51,102,0.06)", border: "1px solid rgba(255,51,102,0.15)" }}>
+              <User className="w-4 h-4" style={{ color: "#ff3366" }} />
+              <span className="font-tech text-xs text-white uppercase tracking-wider">{c.addresseeId}</span>
+            </motion.button>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Enter ID Modal ────────────────────────────────────────
+function EnterIdModal({ onClose, onSelect }: { onClose: () => void; onSelect: (id: string) => void }) {
+  const [value, setValue] = useState("");
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}>
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="w-full max-w-sm rounded-sm overflow-hidden"
+        style={{ background: "#0a0a0a", border: "1px solid rgba(255,51,102,0.3)", boxShadow: "0 0 40px rgba(255,51,102,0.1)" }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <h2 className="font-display font-bold text-sm text-white uppercase tracking-wider"
+            style={{ textShadow: "0 0 12px rgba(255,51,102,0.4)" }}>
+            Ввести ID
+          </h2>
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-5 pb-5 space-y-4">
+          <input value={value} onChange={e => setValue(e.target.value)}
+            placeholder="ID пользователя"
+            onKeyDown={e => e.key === "Enter" && value.trim() && onSelect(value.trim())}
+            className="w-full px-4 py-3 rounded-sm text-sm font-sans text-white outline-none"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,51,102,0.2)" }}
+            autoFocus />
+          <motion.button whileTap={{ scale: 0.97 }}
+            onClick={() => value.trim() && onSelect(value.trim())}
+            disabled={!value.trim()}
+            className="w-full py-3 font-display font-bold text-xs uppercase tracking-[0.15em] rounded-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            style={{
+              background: "rgba(255,51,102,0.12)",
+              border: "1px solid rgba(255,51,102,0.4)",
+              color: "#ff3366",
+              boxShadow: "0 0 20px rgba(255,51,102,0.08)",
+            }}>
+            <UserPlus className="w-3.5 h-3.5" />
+            Создать инкогнито чат
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── New Incognito Chat dropdown ────────────────────────────
+function NewIncognitoDropdown({ onPickContact, onEnterId }: { onPickContact: () => void; onEnterId: () => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <motion.button
+        whileTap={{ scale: 0.96 }}
+        onClick={() => setOpen(o => !o)}
+        className="w-full py-3 flex items-center justify-center gap-2 rounded-sm transition-all"
+        style={{
+          background: open ? "rgba(255,51,102,0.08)" : "rgba(255,51,102,0.04)",
+          border:     open ? "1px solid rgba(255,51,102,0.4)" : "1px dashed rgba(255,51,102,0.2)",
+        }}
+      >
+        <EyeOff className="w-3.5 h-3.5" style={{ color: open ? "#ff3366" : "rgba(255,51,102,0.4)" }} />
+        <span className="font-tech text-[9px] uppercase tracking-widest" style={{ color: open ? "#ff3366" : "rgba(255,51,102,0.4)" }}>
+          Новый инкогнито чат
+        </span>
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="absolute bottom-full mb-2 left-0 right-0 z-30 rounded-sm overflow-hidden"
+            style={{ background: "#0a0a0a", border: "1px solid rgba(255,51,102,0.3)", boxShadow: "0 -4px 20px rgba(255,51,102,0.1)" }}>
+            <button onClick={() => { setOpen(false); onPickContact(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors">
+              <User className="w-4 h-4" style={{ color: "#ff3366" }} />
+              <span className="font-tech text-[10px] uppercase tracking-wider text-white">Выбрать из контактов</span>
+            </button>
+            <div className="h-px mx-4" style={{ background: "rgba(255,51,102,0.1)" }} />
+            <button onClick={() => { setOpen(false); onEnterId(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors">
+              <UserPlus className="w-4 h-4" style={{ color: "#ff3366" }} />
+              <span className="font-tech text-[10px] uppercase tracking-wider text-white">Ввести ID</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -173,7 +295,8 @@ function NewIncognitoButton({ onClick }: { onClick: () => void }) {
 export default function SecretArchive() {
   const [, navigate] = useLocation();
   const [chats, setChats] = useState<ArchiveChat[]>(INITIAL_CHATS);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [pickContactModal, setPickContactModal] = useState(false);
+  const [enterIdModal, setEnterIdModal] = useState(false);
 
   // Auto-remove expired incognito chats
   useEffect(() => {
@@ -187,19 +310,17 @@ export default function SecretArchive() {
     setChats(prev => prev.filter(c => c.id !== id));
   };
 
-  const addIncognitoChat = () => {
-    const names  = ["OMEGA-X", "Тень-14", "Невидимка", "Zero-Day", "Фантом Δ"];
+  const createIncognitoChat = (name: string) => {
     const colors = ["#ff3366", "#ff00cc", "#ffd700", "#ff6600"];
     setChats(prev => [{
       id:        `i_${Date.now()}`,
-      name:      names[Math.floor(Math.random() * names.length)],
+      name,
       color:     colors[Math.floor(Math.random() * colors.length)],
       lastMsg:   "Новый инкогнито чат открыт",
       time:      "Сейчас",
       incognito: true,
       expiresAt: Date.now() + 10 * 60 * 1000,
     }, ...prev]);
-    setShowAddModal(false);
   };
 
   const regular   = chats.filter(c => !c.incognito);
@@ -299,9 +420,30 @@ export default function SecretArchive() {
         </div>
 
         {/* Add new incognito */}
-        <NewIncognitoButton onClick={addIncognitoChat} />
+        <NewIncognitoDropdown
+          onPickContact={() => setPickContactModal(true)}
+          onEnterId={() => setEnterIdModal(true)}
+        />
 
       </div>
+
+      <AnimatePresence>
+        {pickContactModal && (
+          <PickContactModal
+            onClose={() => setPickContactModal(false)}
+            onSelect={(name) => { createIncognitoChat(name); setPickContactModal(false); }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {enterIdModal && (
+          <EnterIdModal
+            onClose={() => setEnterIdModal(false)}
+            onSelect={(id) => { createIncognitoChat(id); setEnterIdModal(false); }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

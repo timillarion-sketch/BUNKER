@@ -38,7 +38,7 @@ function VideoPlaceholder() {
         <div className="flex items-center gap-2 px-4 py-2 rounded-sm"
           style={{ background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.18)" }}>
           <Lock className="w-3 h-3" style={{ color: "#00ff88" }} />
-          <span className="font-tech text-[9px] uppercase tracking-widest" style={{ color: "#00ff88" }}>Зашифрованная лента</span>
+          <span className="font-tech text-[9px] uppercase tracking-widest" style={{ color: "#00ff88" }}>Демо-лента</span>
         </div>
       </div>
       <motion.div animate={{ y: ["0%", "100%"] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }}

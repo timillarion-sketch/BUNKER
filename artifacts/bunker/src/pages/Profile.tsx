@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGhostMode } from "@/hooks/use-ghost-mode";
 import { useTheme, BunkerTheme } from "@/context/ThemeContext";
-import { User, Shield, Server, Eye, Bell, Camera, Skull, LogOut, Key, Ghost, Moon, Monitor } from "lucide-react";
+import { User, Shield, Server, Eye, Bell, Camera, Skull, LogOut, Key, Ghost, Moon, Monitor, BookOpen, Wifi } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { T, API_BASE_URL } from "@/lib/constants";
 import { useTranslation } from "react-i18next";
+import HandbookAccordion from "@/components/HandbookAccordion";
 
 function NeonToggle({ on, onChange, color = "#00f0ff" }: { on: boolean; onChange: (v: boolean) => void; color?: string }) {
   return (
@@ -83,10 +84,14 @@ export default function Profile() {
 
   const [apiUrl,        setApiUrl]      = useState(() => localStorage.getItem("bunker_api_url") ?? API_BASE_URL);
   const [editingUrl,    setEditingUrl]  = useState(false);
+  const [gatewayKey,    setGatewayKey]  = useState(() => localStorage.getItem("bunker_gateway_key") ?? "");
+  const [editingKey,    setEditingKey]  = useState(false);
   const [notifications, setNotifications] = useState(false);
   const [screenshots,   setScreenshots]   = useState(false);
+  const [showGuide,     setShowGuide]     = useState(false);
 
   const saveUrl = () => { localStorage.setItem("bunker_api_url", apiUrl); setEditingUrl(false); };
+  const saveKey = () => { localStorage.setItem("bunker_gateway_key", gatewayKey); setEditingKey(false); };
 
   const themeIsDark = theme === "dark";
 
@@ -262,6 +267,42 @@ export default function Profile() {
           </AnimatePresence>
         </motion.div>
 
+        {/* Secure Gateway Key */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.19 }}
+          className="p-4 rounded-sm"
+          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Wifi className="w-4 h-4" style={{ color: "#00ff88" }} />
+              <span className="font-tech text-[10px] uppercase tracking-widest text-gray-400">Ключ безопасного шлюза</span>
+            </div>
+            <button onClick={() => setEditingKey(!editingKey)}
+              className="text-gray-600 hover:text-white transition-colors font-tech text-[9px] uppercase tracking-wider px-2 py-1"
+              style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+              {editingKey ? "✕" : "EDIT"}
+            </button>
+          </div>
+          <p className="font-sans text-[9px] text-gray-700 mb-3 leading-snug">UI-концепт маршрутизации (не влияет на трафик)</p>
+          <AnimatePresence mode="wait">
+            {editingKey ? (
+              <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-2">
+                <input type="password" value={gatewayKey} onChange={e => setGatewayKey(e.target.value)}
+                  className="flex-1 bg-black px-3 py-2 text-sm font-mono focus:outline-none"
+                  style={{ border: "1px solid rgba(0,255,136,0.4)", color: "#00ff88", caretColor: "#00ff88" }} />
+                <button onClick={saveKey} className="px-4 py-2 font-tech text-xs uppercase tracking-wider"
+                  style={{ background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.4)", color: "#00ff88" }}>
+                  {t("profile.save")}
+                </button>
+              </motion.div>
+            ) : (
+              <motion.p key="view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="font-mono text-xs text-gray-600 truncate">
+                {gatewayKey ? "•".repeat(gatewayKey.length) : "Не настроен"}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
         {/* Danger zone */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.21 }}>
           <div className="p-5 rounded-sm"
@@ -282,7 +323,22 @@ export default function Profile() {
           </div>
         </motion.div>
 
+        {/* User Guide */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => setShowGuide(true)}
+            className="w-full py-4 flex items-center justify-center gap-3 rounded-sm"
+            style={{ background: "rgba(0,240,255,0.04)", border: "1px solid rgba(0,240,255,0.15)" }}>
+            <BookOpen className="w-4 h-4" style={{ color: "#00f0ff" }} />
+            <span className="font-display font-bold text-xs uppercase tracking-[0.2em]" style={{ color: "#00f0ff" }}>
+              Справочник выживающего
+            </span>
+          </motion.button>
+        </motion.div>
+
       </div>
+
+      <HandbookAccordion open={showGuide} onClose={() => setShowGuide(false)} />
+
     </div>
   );
 }

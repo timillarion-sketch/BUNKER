@@ -16,3 +16,4 @@ export * from "./healthStatus";
 export * from "./message";
 export * from "./messageRole";
 export * from "./sendMessageRequest";
+export * from "./contact";

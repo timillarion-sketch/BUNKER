@@ -3,7 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Flame, ChevronLeft, ShieldCheck, AlertTriangle, Ghost } from "lucide-react";
-import { AI_CHARACTERS, N8N_WEBHOOK, T } from "@/lib/constants";
+import { AI_CHARACTERS, T, CHARACTER_ID_MAP, getUserId, API_BASE_URL } from "@/lib/constants";
 import { useGhostMode } from "@/hooks/use-ghost-mode";
 import { useTranslation } from "react-i18next";
 
@@ -15,18 +15,20 @@ interface Msg {
   timestamp: string;
 }
 
-// ── n8n send ───────────────────────────────────────────────
-async function sendToN8n(webhookName: string, message: string): Promise<string> {
-  const res = await fetch(N8N_WEBHOOK, {
+// ── AI chat via backend proxy ──────────────────────────────
+async function sendToBackend(characterId: string, message: string): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/ai/chat`, {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ character: webhookName, message }),
+    body:    JSON.stringify({ message, userId: getUserId(), characterId }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `HTTP ${res.status}`);
+  }
   const data = await res.json();
-  const reply = data?.reply ?? data?.message ?? data?.text ?? data?.output ?? null;
-  if (!reply) throw new Error("no reply field");
-  return String(reply);
+  if (!data.reply) throw new Error("no reply field");
+  return String(data.reply);
 }
 
 // ── Component ──────────────────────────────────────────────
@@ -98,8 +100,8 @@ export default function Chat() {
 
     setLoading(true);
     try {
-      const webhookName = (char as any).webhookName ?? char.id;
-      const reply       = await sendToN8n(webhookName, text);
+      const charId = CHARACTER_ID_MAP[char.id] ?? char.id;
+      const reply  = await sendToBackend(charId, text);
       setMessages(prev => [...prev, {
         id:        `a_${Date.now()}`,
         role:      "assistant",
@@ -149,7 +151,7 @@ export default function Chat() {
           backdropFilter: "blur(16px)",
           boxShadow:      `0 4px 20px ${neon}08`,
         }}>
-        <button onClick={() => setLocation("/lobby")}
+        <button onClick={() => setLocation("/")}
           className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>
