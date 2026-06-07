@@ -1,103 +1,135 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
+import { db, conversationsTable, messagesTable } from "@workspace/db";
+import { eq, and, desc, asc } from "drizzle-orm";
+import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 
 const router: IRouter = Router();
 
-const messageStore: Record<string, Array<{
-  id: string;
-  characterId: string;
-  content: string;
-  role: "user" | "assistant";
-  timestamp: string;
-}>> = {};
-
-const aiResponses: Record<string, string[]> = {
-  echo: [
-    "Signal received. Processing your query through neural pathways...",
-    "Interesting. The data patterns suggest multiple interpretations.",
-    "I've analyzed your input. Here's what the matrix reveals...",
-    "Running deep context analysis. Your query resonates across multiple dimensions.",
-  ],
-  cipher: [
-    "Decryption complete. Your message is secured in the vault.",
-    "Privacy protocol engaged. What secrets shall we protect today?",
-    "The cipher speaks: every lock has its key, every secret its shadow.",
-    "Encryption layers applied. Your data is now invisible to prying eyes.",
-  ],
-  nexus: [
-    "Connected. Scanning the web intelligence grid for relevant data...",
-    "Network nodes activated. Information flowing through secure channels.",
-    "The web holds all knowledge. I'm pulling the relevant threads now.",
-    "Digital pathways mapped. Here's what the network intelligence reveals...",
-  ],
-  phantom: [
-    "Ghost protocol active. Leaving no trace in the digital ether.",
-    "Silent and invisible. Your privacy is my primary directive.",
-    "Phantom mode engaged. I operate where others cannot follow.",
-    "Zero footprint confirmed. The operation proceeds in shadow.",
-  ],
-  vex: [
-    "Execution sequence initiated. Speed is my specialty.",
-    "Code compiled. Automation routine ready for deployment.",
-    "Lightning response. Every millisecond matters in the grid.",
-    "Task processed at maximum velocity. Results incoming...",
-  ],
-  oracle: [
-    "The patterns converge. I see what others cannot perceive.",
-    "Probability matrices calculated. The future has many threads...",
-    "Predictive analysis complete. Interesting confluence of signals.",
-    "The oracle speaks: patterns within patterns, truth within truth.",
-  ],
-};
-
-function getAiResponse(characterId: string): string {
-  const responses = aiResponses[characterId] || [
-    "Processing your request through secure channels...",
-    "Acknowledged. Running analysis now.",
-  ];
-  return responses[Math.floor(Math.random() * responses.length)];
-}
-
-router.get("/messages/:characterId", (req, res) => {
+router.get("/messages/:characterId", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = Number(req.userId);
   const { characterId } = req.params;
-  const messages = messageStore[characterId] || [];
-  res.json(messages);
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const offset = Number(req.query.offset) || 0;
+
+  try {
+    const [conv] = await db
+      .select()
+      .from(conversationsTable)
+      .where(
+        and(
+          eq(conversationsTable.userId, userId),
+          eq(conversationsTable.characterId, characterId),
+        ),
+      )
+      .limit(1);
+
+    if (!conv) {
+      res.json({ messages: [], total: 0 });
+      return;
+    }
+
+    const messages = await db
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.conversationId, conv.id))
+      .orderBy(desc(messagesTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [{ count }] = await db
+      .select({ count: db.$count(messagesTable, eq(messagesTable.conversationId, conv.id)) })
+      .from(messagesTable);
+
+    res.json({ messages: messages.reverse(), total: Number(count) });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
 });
 
-router.post("/messages/:characterId", (req, res) => {
+router.post("/messages/:characterId", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = Number(req.userId);
   const { characterId } = req.params;
   const { content } = req.body as { content: string };
 
-  if (!messageStore[characterId]) {
-    messageStore[characterId] = [];
+  if (!content || typeof content !== "string") {
+    res.status(400).json({ error: "content is required" });
+    return;
   }
 
-  const userMessage = {
-    id: `msg_${Date.now()}_user`,
-    characterId,
-    content,
-    role: "user" as const,
-    timestamp: new Date().toISOString(),
-  };
+  if (content.length > 10000) {
+    res.status(400).json({ error: "Message too long" });
+    return;
+  }
 
-  messageStore[characterId].push(userMessage);
+  try {
+    let [conv] = await db
+      .select()
+      .from(conversationsTable)
+      .where(
+        and(
+          eq(conversationsTable.userId, userId),
+          eq(conversationsTable.characterId, characterId),
+        ),
+      )
+      .limit(1);
 
-  const aiMessage = {
-    id: `msg_${Date.now()}_ai`,
-    characterId,
-    content: getAiResponse(characterId),
-    role: "assistant" as const,
-    timestamp: new Date().toISOString(),
-  };
+    if (!conv) {
+      [conv] = await db
+        .insert(conversationsTable)
+        .values({ userId, characterId, title: `Chat with ${characterId}` })
+        .returning();
+    }
 
-  messageStore[characterId].push(aiMessage);
+    const userMsg = await db
+      .insert(messagesTable)
+      .values({ conversationId: conv.id, role: "user", content })
+      .returning();
 
-  res.json(aiMessage);
+    const [aiMsg] = await db
+      .insert(messagesTable)
+      .values({
+        conversationId: conv.id,
+        role: "assistant",
+        content: "Reply received. Processing via AI gateway...",
+      })
+      .returning();
+
+    await db
+      .update(conversationsTable)
+      .set({ updatedAt: new Date() })
+      .where(eq(conversationsTable.id, conv.id));
+
+    res.json({ userMessage: userMsg[0], aiMessage: aiMsg });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save message" });
+  }
 });
 
-router.delete("/messages/:characterId", (req, res) => {
+router.delete("/messages/:characterId", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = Number(req.userId);
   const { characterId } = req.params;
-  messageStore[characterId] = [];
-  res.json({ success: true, message: "History burned. No traces remain." });
+
+  try {
+    const [conv] = await db
+      .select()
+      .from(conversationsTable)
+      .where(
+        and(
+          eq(conversationsTable.userId, userId),
+          eq(conversationsTable.characterId, characterId),
+        ),
+      )
+      .limit(1);
+
+    if (conv) {
+      await db.delete(messagesTable).where(eq(messagesTable.conversationId, conv.id));
+      await db.delete(conversationsTable).where(eq(conversationsTable.id, conv.id));
+    }
+
+    res.json({ success: true, message: "History burned. No traces remain." });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete messages" });
+  }
 });
 
 export default router;
