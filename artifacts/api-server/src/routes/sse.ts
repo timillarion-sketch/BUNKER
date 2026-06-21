@@ -1,5 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
 import { subscribe } from "../lib/sse-events";
+import { addSseClient, removeSseClient, getSseClientCount, getUserSseCount, MAX_SSE_PER_USER } from "../lib/sse-manager";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 import { logger } from "../lib/logger";
 
@@ -7,15 +8,27 @@ const router: IRouter = Router();
 
 const MAX_SSE_CONNECTIONS = 100;
 
-let activeConnections = 0;
-
 router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  if (activeConnections >= MAX_SSE_CONNECTIONS) {
+  const userId = String(req.userId ?? '');
+
+  if (getSseClientCount() >= MAX_SSE_CONNECTIONS) {
     res.status(503).json({ error: "Server busy, too many connections" });
     return;
   }
 
-  activeConnections++;
+  const currentCount = getUserSseCount(userId);
+  if (currentCount >= MAX_SSE_PER_USER) {
+    console.warn(
+      `[SSE] Limit exceeded for userId=${userId} ` +
+      `current=${currentCount} max=${MAX_SSE_PER_USER}`
+    );
+    res.status(429).json({
+      error: 'Too many SSE connections',
+      current: currentCount,
+      max: MAX_SSE_PER_USER,
+    });
+    return;
+  }
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -26,14 +39,22 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
 
   res.write(":connected\n\n");
 
-  const userId = req.userId ?? null;
+  const clientId = addSseClient(userId, res);
 
-  const unsubContact = subscribe("contact", userId, (data) => {
+  const unsubContact = subscribe("contact", (data) => {
     res.write(`event: contact\ndata: ${JSON.stringify(data)}\n\n`);
   });
 
-  const unsubMessage = subscribe("message", userId, (data) => {
+  const unsubMessage = subscribe("message", (data) => {
     res.write(`event: message\ndata: ${JSON.stringify(data)}\n\n`);
+  });
+
+  const unsubTyping = subscribe("typing", (data) => {
+    res.write(`event: typing\ndata: ${JSON.stringify(data)}\n\n`);
+  });
+
+  const unsubConversation = subscribe("conversation", (data) => {
+    res.write(`event: conversation\ndata: ${JSON.stringify(data)}\n\n`);
   });
 
   const keepAlive = setInterval(() => {
@@ -47,8 +68,10 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
   const cleanup = () => {
     unsubContact();
     unsubMessage();
+    unsubTyping();
+    unsubConversation();
     clearInterval(keepAlive);
-    activeConnections = Math.max(0, activeConnections - 1);
+    removeSseClient(clientId);
   };
 
   req.on("close", cleanup);

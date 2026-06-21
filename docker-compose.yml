@@ -1,26 +1,8 @@
 services:
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   db:
     image: postgres:16-alpine
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     env_file:
       - .env
     volumes:
@@ -31,6 +13,86 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: bunker-app-redis-1
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --requirepass ${REDIS_PASSWORD}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate-runner
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "pnpm --filter @workspace/db run migrate"
+    restart: no
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api-runner
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      API_URL: https://176.12.72.246
+      FRONTEND_URL: https://176.12.72.246
+      VK_CLIENT_ID: ${VK_CLIENT_ID}
+      VK_CLIENT_SECRET: ${VK_CLIENT_SECRET}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@bunker-app-redis-1:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend-runner
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /root/bunker-app/letsencrypt-webroot/.well-known/acme-challenge:/usr/share/nginx/html/.well-known/acme-challenge
+    depends_on:
+      - api
+    restart: unless-stopped
 
 volumes:
   pgdata:

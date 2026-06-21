@@ -163,3 +163,25 @@ Instead of /public/.env, use /.env.
 5:44:24 PM [vite] (client) hmr update /src/pages/Browser.tsx, /src/index.css
 5:44:30 PM [vite] (client) hmr update /src/pages/Browser.tsx, /src/index.css
 5:45:36 PM [vite] (client) hmr update /src/pages/Browser.tsx, /src/index.css
+6:38:24 PM [vite] (client) hmr update /src/pages/Chat.tsx, /src/pages/ContentProducerChat.tsx, /src/pages/ChatsList.tsx, /src/pages/SecretArchive.tsx, /src/index.css
+6:38:30 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Profile.tsx, /src/pages/Login.tsx, /src/index.css
+6:38:51 PM [vite] (client) hmr update /src/pages/Login.tsx, /src/index.css
+6:39:20 PM [vite] (client) hmr update /src/pages/Chat.tsx, /src/index.css
+6:39:24 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+6:39:30 PM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+6:39:33 PM [vite] (client) hmr update /src/pages/Profile.tsx, /src/index.css
+6:42:20 PM [vite] (client) hmr update /src/pages/Login.tsx, /src/index.css
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+11:34:22 PM [vite] (client) page reload src/i18n/ru.ts
+11:34:25 PM [vite] (client) page reload src/i18n/ru.ts
+11:34:31 PM [vite] (client) hmr update /src/pages/Login.tsx, /src/index.css
+11:34:35 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Profile.tsx, /src/pages/Login.tsx, /src/pages/Chat.tsx, /src/index.css
+11:34:38 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Profile.tsx, /src/pages/Login.tsx, /src/pages/Chat.tsx, /src/index.css
+Files in the public directory are served at the root path.
+Instead of /public/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php, use /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.
+Files in the public directory are served at the root path.
+Instead of /public/index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello, use /index.php?s=/index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=Hello.
+Killed

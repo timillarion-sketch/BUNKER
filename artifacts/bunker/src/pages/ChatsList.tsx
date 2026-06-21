@@ -3,13 +3,25 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Shield, Plus, Radio, Wifi, Hexagon, X, UserPlus } from "lucide-react";
 import { T, getUserId } from "@/lib/constants";
-import { api } from "@/lib/api";
-import { MOCK_CONVERSATIONS, MOCK_NODES } from "@/lib/fixtures";
 import { useSecretPin } from "@/hooks/use-secret-pin";
 import { PinModal } from "@/components/PinModal";
 import { useTranslation } from "react-i18next";
 import { useRealtime } from "@/hooks/use-realtime";
 import { useToast } from "@/hooks/use-toast";
+
+const CONVERSATIONS = [
+  { id: "c1", name: "Agent K",  color: "#00f0ff", lastMsg: "Точка сброса закреплена. Жду сигнала.",      time: "14:23",   unread: 2, encrypted: true  },
+  { id: "c2", name: "ZeroCool", color: "#ff00cc", lastMsg: "Мейнфрейм пропатчен. Нужен другой путь.",   time: "09:11",   unread: 0, encrypted: true  },
+  { id: "c3", name: "Morpheus", color: "#00ff88", lastMsg: "Взломай планету.",                           time: "Вчера",   unread: 0, encrypted: true  },
+  { id: "c4", name: "Trinity",  color: "#bf00ff", lastMsg: "Следуй за белым кроликом.",                  time: "Вторник", unread: 1, encrypted: true  },
+  { id: "c5", name: "Ghost",    color: "#ffd700", lastMsg: "Сигнал потерян. Переподключение...",         time: "Вторник", unread: 0, encrypted: false },
+];
+
+const MOCK_NODES = [
+  { id: "n1", name: "BUNKER_7F2A", rssi: -42, lat: "55.75°N", lng: "37.61°E" },
+  { id: "n2", name: "BUNKER_3C9D", rssi: -61, lat: "55.74°N", lng: "37.62°E" },
+  { id: "n3", name: "BUNKER_A1F6", rssi: -78, lat: "55.76°N", lng: "37.60°E" },
+];
 
 function rssiBar(rssi: number) {
   const pct   = Math.min(100, Math.max(0, ((rssi + 100) / 60) * 100));
@@ -179,7 +191,17 @@ function AddContactModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     setLoading(true);
     setError(null);
     try {
-      await api.post("/contacts", { userId: userId.trim() });
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userId.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        if (res.status === 400) throw new Error(t("chats.errorSelf"));
+        if (res.status === 409) throw new Error(t("chats.errorExists"));
+        throw new Error(body.error || t("chats.errorGeneric"));
+      }
       onSuccess();
       onClose();
     } catch (err) {
@@ -258,17 +280,18 @@ export default function ChatsList() {
 
   const [pinModal, setPinModal] = useState<"setup" | "verify" | null>(null);
   const [addModal, setAddModal] = useState(false);
-  const [conversations, setConversations] = useState([...MOCK_CONVERSATIONS]);
+  const [conversations, setConversations] = useState(CONVERSATIONS);
 
   const fetchAndUpdateContacts = useCallback(async () => {
     try {
-      const data = await api.get<Array<{ id: number; requesterId: string; addresseeId: string; status: string; createdAt: string }>>("/contacts");
+      const res = await fetch("/api/contacts");
+      const data = await res.json();
       setConversations(prev => {
         const existingIds = new Set(prev.map(c => c.id));
         const newContacts = data
-          .filter(c => c.status === "pending")
-          .filter(c => !existingIds.has(`c_${c.id}`))
-          .map(c => ({
+          .filter((c: { requesterId: string; addresseeId: string; status: string }) => c.status === "pending" && c.addresseeId !== "default_user")
+          .filter((c: { id: number }) => !existingIds.has(`c_${c.id}`))
+          .map((c: { id: number; addresseeId: string; createdAt: string }) => ({
             id: `c_${c.id}`,
             name: c.addresseeId,
             color: "#ff00cc",
@@ -366,7 +389,7 @@ export default function ChatsList() {
 
       {/* Conversation list */}
       <div className="space-y-2">
-        {conversations.map((chat, i) => (
+        {CONVERSATIONS.map((chat, i) => (
           <motion.div key={chat.id}
             initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.07, type: "spring", stiffness: 260, damping: 22 }}
@@ -423,11 +446,11 @@ export default function ChatsList() {
           <AddContactModal
             onClose={() => setAddModal(false)}
             onSuccess={() => {
-              api.get<Array<{ id: number; addresseeId: string; status: string; createdAt: string }>>("/contacts").then(data => {
+              fetch("/api/contacts").then(r => r.json()).then(data => {
                 setConversations(prev => {
                   const newContacts = data
-                    .filter(c => c.status === "pending")
-                    .map(c => ({
+                    .filter((c: { requesterId: string; addresseeId: string; status: string }) => c.status === "pending" && c.addresseeId !== "default_user")
+                    .map((c: { id: number; addresseeId: string; createdAt: string }) => ({
                       id: `c_${c.id}`,
                       name: c.addresseeId,
                       color: "#ff00cc",

@@ -3,6 +3,11 @@ packages:
   - lib/*
   - lib/integrations/*
   - scripts
+  - apps/mobile
+
+allowBuilds:
+  '@sentry-internal/node-cpu-profiler': true
+  '@sentry/cli': true
 
 autoInstallPeers: false
 
@@ -29,7 +34,7 @@ catalog:
   vite: ^7.3.0
   zod: ^3.25.76
 
-minimumReleaseAge: 1440
+minimumReleaseAge: 0
 
 minimumReleaseAgeExclude:
   - '@replit/*'

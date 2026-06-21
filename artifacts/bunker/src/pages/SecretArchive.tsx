@@ -3,8 +3,46 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Archive, Trash2, EyeOff, Timer, Lock, UserPlus, User, X } from "lucide-react";
 import { useLocation } from "wouter";
 import { T } from "@/lib/constants";
-import { api } from "@/lib/api";
-import { INITIAL_ARCHIVE_CHATS, type ArchiveChat } from "@/lib/fixtures";
+
+// ── Mock archive data (RAM only — won't persist) ──────────
+interface ArchiveChat {
+  id:          string;
+  name:        string;
+  color:       string;
+  lastMsg:     string;
+  time:        string;
+  incognito:   boolean;
+  expiresAt?:  number; // timestamp for incognito self-destruct
+}
+
+const INITIAL_CHATS: ArchiveChat[] = [
+  {
+    id:        "a1",
+    name:      "Оперативник Α",
+    color:     "#ff3366",
+    lastMsg:   "Пакет доставлен. Точка Б подтверждена.",
+    time:      "03:17",
+    incognito: true,
+    expiresAt: Date.now() + 8 * 60 * 1000 + 33 * 1000, // 8:33 remaining
+  },
+  {
+    id:        "a2",
+    name:      "DELTA-7",
+    color:     "#bf00ff",
+    lastMsg:   "Координаты зафиксированы. Жди сигнала.",
+    time:      "Вчера",
+    incognito: false,
+  },
+  {
+    id:        "a3",
+    name:      "Призрак-9",
+    color:     "#ffd700",
+    lastMsg:   "Выход через чёрный ход. Не светись.",
+    time:      "Пн",
+    incognito: true,
+    expiresAt: Date.now() + 3 * 60 * 1000 + 12 * 1000, // 3:12 remaining
+  },
+];
 
 // ── Countdown hook ────────────────────────────────────────
 function useCountdown(expiresAt?: number): string | null {
@@ -116,8 +154,9 @@ function PickContactModal({ onClose, onSelect }: { onClose: () => void; onSelect
   const [contacts, setContacts] = useState<{ id: number; addresseeId: string }[]>([]);
 
   useEffect(() => {
-    api.get<Array<{ id: number; addresseeId: string; status: string }>>("/contacts")
-      .then(data => setContacts(data.filter(c => c.status === "pending")))
+    fetch("/api/contacts")
+      .then(r => r.json())
+      .then(data => setContacts(data.filter((c: { status: string }) => c.status === "pending")))
       .catch(() => {});
   }, []);
 
@@ -255,7 +294,7 @@ function NewIncognitoDropdown({ onPickContact, onEnterId }: { onPickContact: () 
 // ── Page ─────────────────────────────────────────────────
 export default function SecretArchive() {
   const [, navigate] = useLocation();
-  const [chats, setChats] = useState<ArchiveChat[]>([...INITIAL_ARCHIVE_CHATS]);
+  const [chats, setChats] = useState<ArchiveChat[]>(INITIAL_CHATS);
   const [pickContactModal, setPickContactModal] = useState(false);
   const [enterIdModal, setEnterIdModal] = useState(false);
 

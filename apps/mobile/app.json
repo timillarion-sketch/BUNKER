@@ -1,0 +1,70 @@
+{
+  "expo": {
+    "name": "Бункер",
+    "slug": "bunker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "bunker",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.bunker.app",
+      "versionCode": 1,
+      "allowBackup": false,
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0f",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE",
+        "BIND_VPN_SERVICE",
+        "FOREGROUND_SERVICE",
+        "RECEIVE_BOOT_COMPLETED",
+        "POST_NOTIFICATIONS",
+        "FOREGROUND_SERVICE_CONNECTED_CAMERA",
+        "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "predictiveBackGestureEnabled": false,
+      "networkSecurityConfig": "./network-security-config.xml"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bunker.app",
+      "networkExtension": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24,
+            "enableMinifyInReleaseBuilds": true
+          }
+        }
+      ],
+      "expo-sqlite",
+      "@sentry/react-native/expo",
+      "expo-web-browser",
+      "./plugins/withNoBackup"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1eabf413-70fe-43cd-a796-45c47fb1b099"
+      }
+    },
+    "owner": "timgood"
+  }
+}

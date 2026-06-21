@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Response } from "express";
 import { db, conversationsTable, messagesTable } from "@workspace/db";
 import { eq, and, desc, asc } from "drizzle-orm";
+import { broadcastSse } from "../lib/sse-manager";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -49,14 +50,14 @@ router.get("/messages/:characterId", requireAuth, async (req: AuthenticatedReque
 router.post("/messages/:characterId", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = Number(req.userId);
   const { characterId } = req.params;
-  const { content } = req.body as { content: string };
+  const { content, encrypted } = req.body as { content?: string; encrypted?: boolean };
 
   if (!content || typeof content !== "string") {
     res.status(400).json({ error: "content is required" });
     return;
   }
 
-  if (content.length > 10000) {
+  if (content.length > 50000) {
     res.status(400).json({ error: "Message too long" });
     return;
   }
@@ -82,16 +83,7 @@ router.post("/messages/:characterId", requireAuth, async (req: AuthenticatedRequ
 
     const userMsg = await db
       .insert(messagesTable)
-      .values({ conversationId: conv.id, role: "user", content })
-      .returning();
-
-    const [aiMsg] = await db
-      .insert(messagesTable)
-      .values({
-        conversationId: conv.id,
-        role: "assistant",
-        content: "Reply received. Processing via AI gateway...",
-      })
+      .values({ conversationId: conv.id, role: "user", content, encrypted: encrypted ?? false })
       .returning();
 
     await db
@@ -99,7 +91,12 @@ router.post("/messages/:characterId", requireAuth, async (req: AuthenticatedRequ
       .set({ updatedAt: new Date() })
       .where(eq(conversationsTable.id, conv.id));
 
-    res.json({ userMessage: userMsg[0], aiMessage: aiMsg });
+    await broadcastSse("conversation", {
+      conversationId: conv.id,
+      updatedAt: new Date(),
+    });
+
+    res.json({ userMessage: userMsg[0] });
   } catch (err) {
     res.status(500).json({ error: "Failed to save message" });
   }

@@ -2,8 +2,8 @@
 // BUNKER — Central Config
 // ─────────────────────────────────────────────────────────
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
-// All API calls go through lib/api.ts — never call fetch() directly
+export const API_BASE_URL = "/api";
+export const N8N_WEBHOOK  = "https://timgood.app.n8n.cloud/webhook-test/bunkerV2";
 
 export const CHARACTER_ID_MAP: Record<string, string> = {
   psychologist: "psycho",

@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
+import { requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
 
-router.post("/browser/analyze", (req, res) => {
+router.post("/browser/analyze", requireAuth, (req, res) => {
   const { url, content } = req.body as { url: string; content?: string };
 
   const summaries = [

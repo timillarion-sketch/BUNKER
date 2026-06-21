@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 3.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "node": "20.18.0",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://176.12.72.246:8080",
+        "GRADLE_OPTS": "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "node": "20.18.0",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://176.12.72.246:8080"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

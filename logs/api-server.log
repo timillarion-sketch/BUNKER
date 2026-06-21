@@ -430,3 +430,963 @@
       "statusCode": 404
     }
     [35mresponseTime[39m: 1
+[18:24:26.795] [32mINFO[39m (233858): [36mrequest aborted[39m
+    [35mreq[39m: {
+      "id": 44,
+      "method": "GET",
+      "url": "/api/events"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 2686
+[18:24:32.921] [32mINFO[39m (233858): [36mrequest aborted[39m
+    [35mreq[39m: {
+      "id": 45,
+      "method": "GET",
+      "url": "/api/events"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 2650
+[18:25:17.936] [32mINFO[39m (233858): [36mrequest aborted[39m
+    [35mreq[39m: {
+      "id": 46,
+      "method": "GET",
+      "url": "/api/events"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 35472
+[18:25:20.831] [32mINFO[39m (233858): [36mrequest aborted[39m
+    [35mreq[39m: {
+      "id": 47,
+      "method": "GET",
+      "url": "/api/events"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 3271
+[22:20:32.192] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 48,
+      "method": "GET",
+      "url": "/api/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 6
+[23:17:31.307] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 49,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 3
+[23:17:42.748] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 50,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 3
+[23:17:46.722] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 51,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:17:48.350] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 52,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:18:24.791] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 53,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:18:28.596] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 54,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:18:29.826] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 55,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:18:39.717] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 56,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:18:53.892] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 57,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:24:44.739] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 58,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:24:51.114] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 59,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:24:55.344] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 60,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:24:56.696] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 61,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:25:00.069] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 62,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:25:04.926] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 63,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:25:21.000] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 64,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:25:22.340] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 65,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:25:24.217] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 66,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:25:26.074] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 67,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:25:27.025] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 68,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 3
+[23:25:29.060] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 69,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:25:30.167] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 70,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:26:03.677] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 71,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:26:06.336] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 72,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:26:22.242] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 73,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:26:23.314] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 74,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:26:24.038] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 75,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:26:26.055] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 76,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:26:27.464] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 77,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:26:28.271] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 78,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:26:29.423] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 79,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:27:48.592] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 80,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:27:49.628] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 81,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:24.669] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 82,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:28:34.572] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 83,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:28:36.696] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 84,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:37.507] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 85,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:38.577] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 86,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:28:39.858] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 87,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:41.005] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 88,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:41.903] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 89,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:42.569] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 90,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:28:43.747] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 91,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:44.650] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 92,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:45.429] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 93,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:28:46.148] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 94,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:46.851] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 95,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:28:47.078] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 96,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:47.860] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 97,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:48.531] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 98,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:49.263] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 99,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:49.487] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 100,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:28:49.831] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 101,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:50.161] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 102,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:50.765] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 103,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:28:51.105] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 104,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:28:52.042] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 105,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:35:36.317] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 106,
+      "method": "GET",
+      "url": "/api/auth/oauth/vk"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:35:46.423] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 107,
+      "method": "GET",
+      "url": "/api/auth/oauth/yandex"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:35:49.022] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 108,
+      "method": "GET",
+      "url": "/api/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:35:56.815] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 109,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:35:58.300] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 110,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:36:12.876] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 111,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:36:17.419] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 112,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:36:22.021] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 113,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:36:26.160] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 114,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:36:35.093] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 115,
+      "method": "GET",
+      "url": "/api/auth/oauth/vk"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:36:37.199] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 116,
+      "method": "GET",
+      "url": "/api/auth/oauth/vk"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:36:39.027] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 117,
+      "method": "GET",
+      "url": "/api/auth/oauth/vk"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:36:40.504] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 118,
+      "method": "GET",
+      "url": "/api/auth/oauth/vk"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:36:41.615] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 119,
+      "method": "GET",
+      "url": "/api/auth/oauth/vk"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:40:02.033] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 120,
+      "method": "GET",
+      "url": "/api/auth/me"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 3
+[23:40:05.107] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 121,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 4
+[23:40:08.383] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 122,
+      "method": "POST",
+      "url": "/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:40:11.523] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 123,
+      "method": "POST",
+      "url": "/api/v1/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:40:11.545] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 124,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:40:20.835] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 125,
+      "method": "GET",
+      "url": "/api/health"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 1
+[23:41:02.849] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 126,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:41:13.913] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 127,
+      "method": "POST",
+      "url": "/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:41:34.504] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 128,
+      "method": "GET",
+      "url": "/"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:42:00.125] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 129,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:42:28.550] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 130,
+      "method": "GET",
+      "url": "/"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:42:35.264] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 131,
+      "method": "GET",
+      "url": "/api/"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:42:38.148] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 132,
+      "method": "GET",
+      "url": "/api/health"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:42:45.837] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 133,
+      "method": "GET",
+      "url": "/api/healthz"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 8
+[23:42:49.207] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 134,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 3
+[23:42:52.170] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 135,
+      "method": "POST",
+      "url": "/api/auth/register"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0
+[23:43:13.450] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 136,
+      "method": "POST",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:43:16.606] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 137,
+      "method": "GET",
+      "url": "/api/healthz"
+    }
+    [35mres[39m: {
+      "statusCode": 200
+    }
+    [35mresponseTime[39m: 3
+[23:43:16.628] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 138,
+      "method": "GET",
+      "url": "/api/auth/me"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 2
+[23:43:16.651] [32mINFO[39m (233858): [36mrequest completed[39m
+    [35mreq[39m: {
+      "id": 139,
+      "method": "GET",
+      "url": "/api/auth/login"
+    }
+    [35mres[39m: {
+      "statusCode": 404
+    }
+    [35mresponseTime[39m: 0

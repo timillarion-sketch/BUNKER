@@ -3,8 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Flame, ChevronLeft, ShieldCheck, AlertTriangle, Ghost } from "lucide-react";
-import { AI_CHARACTERS, T, CHARACTER_ID_MAP } from "@/lib/constants";
-import { api } from "@/lib/api";
+import { AI_CHARACTERS, N8N_WEBHOOK, T, CHARACTER_ID_MAP, getUserId } from "@/lib/constants";
 import { useGhostMode } from "@/hooks/use-ghost-mode";
 import { useTranslation } from "react-i18next";
 
@@ -16,10 +15,18 @@ interface Msg {
   timestamp: string;
 }
 
-// ── AI chat via backend proxy ──────────────────────────────
-async function sendToBackend(characterId: string, message: string): Promise<string> {
-  const data = await api.post<{ reply: string }>("/ai/chat", { message, characterId });
-  return data.reply;
+// ── n8n send ───────────────────────────────────────────────
+async function sendToN8n(characterId: string, message: string): Promise<string> {
+  const res = await fetch(N8N_WEBHOOK, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ message, userId: getUserId(), characterId }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  const reply = data?.reply ?? data?.message ?? data?.text ?? data?.output ?? null;
+  if (!reply) throw new Error("no reply field");
+  return String(reply);
 }
 
 // ── Component ──────────────────────────────────────────────
@@ -92,7 +99,7 @@ export default function Chat() {
     setLoading(true);
     try {
       const charId = CHARACTER_ID_MAP[char.id] ?? char.id;
-      const reply  = await sendToBackend(charId, text);
+      const reply  = await sendToN8n(charId, text);
       setMessages(prev => [...prev, {
         id:        `a_${Date.now()}`,
         role:      "assistant",

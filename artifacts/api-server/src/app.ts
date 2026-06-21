@@ -1,25 +1,29 @@
+import crypto from "crypto";
 import express, { type Express } from "express";
 import cors from "cors";
-import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { errorHandler } from "./lib/error-handler";
 import { logger } from "./lib/logger";
 import { getEnv } from "./lib/env";
+import { securityMiddleware } from "./middleware/security";
 
 const app: Express = express();
 const env = getEnv();
 
-// Security headers
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-}));
+// Security headers — must be first middleware
+securityMiddleware.forEach(mw => app.use(mw));
 
-// CORS whitelist
+// Add request ID for correlation
+app.use((req: Request, _res, next) => {
+  req.id = crypto.randomUUID();
+  next();
+});
+
+// CORS whitelist — only known origins, no wildcard subdomain matching
 const allowedOrigins = env.NODE_ENV === "production"
-  ? [/^https:\/\/.+\.bunker\.app$/]
+  ? [/^https:\/\/bunker\.app$/, /^https:\/\/.+\.bunker\.app$/, /^https:\/\/176\.12\.72\.246(?::\d+)?$/]
   : ["*"];
 
 app.use(cors({

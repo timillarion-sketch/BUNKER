@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Send, RefreshCw, Sparkles, Copy, Check } from "lucide-react";
-import { T, CHARACTER_ID_MAP } from "@/lib/constants";
-import { api } from "@/lib/api";
+import { T, N8N_WEBHOOK, CHARACTER_ID_MAP, getUserId } from "@/lib/constants";
 import { useTheme } from "@/context/ThemeContext";
 
 // ── Branch tree ───────────────────────────────────────────
@@ -61,12 +60,17 @@ interface Msg {
   buttons?: Array<{ label: string; emoji?: string; onClick: () => void }>;
 }
 
-async function sendToBackend(message: string): Promise<string> {
-  const data = await api.post<{ reply: string }>("/ai/chat", {
-    message,
-    characterId: CHARACTER_ID_MAP["content-producer"],
+async function sendToN8n(message: string): Promise<string> {
+  const res = await fetch(N8N_WEBHOOK, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ message, userId: getUserId(), characterId: CHARACTER_ID_MAP["content-producer"] }),
   });
-  return data.reply;
+  if (!res.ok) throw new Error("http");
+  const data = await res.json();
+  const reply = data?.reply ?? data?.message ?? data?.text ?? data?.output ?? null;
+  if (!reply) throw new Error("no reply");
+  return String(reply);
 }
 
 // ── Message bubble ────────────────────────────────────────
@@ -300,7 +304,7 @@ export default function ContentProducerChat() {
     const aggregated = `КОНТЕКСТ: ${context.join(" → ")}\nЗАПРОС: ${userText}\nСоставь экспертный промпт для контент-продюсера, объединив все параметры.`;
 
     try {
-      const reply = await sendToBackend(aggregated);
+      const reply = await sendToN8n(aggregated);
       addMsg({ kind: "result", text: reply });
     } catch {
       addMsg({ kind: "error", text: "Соединение разорвано. Повтори попытку." });

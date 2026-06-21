@@ -282,7 +282,7 @@ export default function Profile() {
               {editingKey ? "✕" : "EDIT"}
             </button>
           </div>
-          <p className="font-sans text-[9px] text-gray-700 mb-3 leading-snug">UI-концепт маршрутизации (не влияет на трафик)</p>
+          <p className="font-sans text-[9px] text-gray-700 mb-3 leading-snug">Приватная маршрутизация соединения</p>
           <AnimatePresence mode="wait">
             {editingKey ? (
               <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-2">

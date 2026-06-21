@@ -13,6 +13,9 @@ import * as zod from "zod";
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+  db: zod.enum(["ok", "error"]).optional(),
+  uptime: zod.number().optional(),
+  timestamp: zod.string().optional(),
 });
 
 /**

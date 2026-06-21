@@ -2,7 +2,7 @@ import { Router, type IRouter, type Response } from "express";
 import { db, contactsTable } from "@workspace/db";
 import { AddContactBody } from "@workspace/api-zod";
 import { eq, or, and } from "drizzle-orm";
-import { publish } from "../lib/sse-events";
+import { broadcastSse } from "../lib/sse-manager";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -61,7 +61,7 @@ router.post("/contacts", requireAuth, async (req: AuthenticatedRequest, res: Res
       .values({ requesterId, addresseeId: targetUserId, status: "pending" })
       .returning();
 
-    publish("contact", { type: "created", contact });
+    await broadcastSse("contact", { type: "created", contact });
     res.status(201).json(contact);
   } catch (err) {
     res.status(500).json({ error: "Failed to create contact" });
@@ -94,7 +94,7 @@ router.delete("/contacts/:id", requireAuth, async (req: AuthenticatedRequest, re
     }
 
     await db.delete(contactsTable).where(eq(contactsTable.id, id));
-    publish("contact", { type: "deleted", id });
+    await broadcastSse("contact", { type: "deleted", id });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete contact" });
