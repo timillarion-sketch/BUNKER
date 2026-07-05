@@ -23,12 +23,12 @@ export function initOfflineQueue(): () => void {
     isOnline = !!(state.isConnected && state.isInternetReachable);
 
     if (wasOffline && isOnline) {
-      console.log('[OfflineQueue] Back online, processing queue...');
+      if (__DEV__) console.log('[OfflineQueue] Back online, processing queue...');
       processQueue();
     }
 
     if (!isOnline) {
-      console.log('[OfflineQueue] Offline mode');
+      if (__DEV__) console.log('[OfflineQueue] Offline mode');
     }
   });
 
@@ -45,7 +45,7 @@ export function enqueueRequest(
     retryCount: 0,
   };
   queue.push(queued);
-  console.log(
+  if (__DEV__) console.log(
     `[OfflineQueue] Enqueued: ${request.method} ${request.url} total=${queue.length}`,
   );
 }
@@ -54,7 +54,7 @@ async function processQueue(): Promise<void> {
   if (isProcessing || queue.length === 0) return;
   isProcessing = true;
 
-  console.log(`[OfflineQueue] Processing ${queue.length} requests`);
+  if (__DEV__) console.log(`[OfflineQueue] Processing ${queue.length} requests`);
 
   while (queue.length > 0 && isOnline) {
     const request = queue[0];
@@ -68,7 +68,7 @@ async function processQueue(): Promise<void> {
 
       if (response.ok) {
         queue.shift();
-        console.log(`[OfflineQueue] Sent: ${request.method} ${request.url}`);
+        if (__DEV__) console.log(`[OfflineQueue] Sent: ${request.method} ${request.url}`);
       } else if (response.status >= 400 && response.status < 500) {
         queue.shift();
         console.warn(
@@ -85,7 +85,7 @@ async function processQueue(): Promise<void> {
       }
     } catch {
       isOnline = false;
-      console.log('[OfflineQueue] Network error, pausing');
+      if (__DEV__) console.log('[OfflineQueue] Network error, pausing');
       break;
     }
   }

@@ -9,6 +9,7 @@ import { logger } from "./lib/logger";
 import { getEnv } from "./lib/env";
 import { pool, db } from "@workspace/db";
 import { initSseRedisSubscriber } from "./lib/sse-manager";
+import { setWebhook } from "./lib/telegram-bot";
 
 const rawPort = process.env["PORT"];
 
@@ -92,6 +93,12 @@ async function main() {
     }
 
     logger.info({ port }, "Server listening");
+
+    // Register Telegram bot webhook after server is ready
+    const webhookUrl = `${env.API_URL}/api/bot/webhook`;
+    setWebhook(webhookUrl).catch((err) =>
+      logger.error({ err }, "Telegram webhook registration failed"),
+    );
   });
 
   // Graceful shutdown

@@ -4,9 +4,9 @@ import { CryptoService } from "./crypto";
 
 function getBaseUrl(): string {
   try {
-    return (import.meta as unknown as Record<string, Record<string, string>>).env?.EXPO_PUBLIC_API_URL ?? "http://176.12.72.246:8080";
+    return (import.meta as unknown as Record<string, Record<string, string>>).env?.EXPO_PUBLIC_API_URL ?? "https://176.12.72.246.nip.io";
   } catch {
-    return "http://176.12.72.246:8080";
+    return "https://176.12.72.246.nip.io";
   }
 }
 
@@ -15,6 +15,7 @@ const _storage: IStorage = isNative ? new ExpoSecureStorage() : new WebStorage()
 const _baseUrl = getBaseUrl();
 
 export const storage: IStorage = _storage;
+export const API_URL = _baseUrl;
 export const api = new ApiClient(_baseUrl, _storage);
 export const crypto = new CryptoService(_storage);
 

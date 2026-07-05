@@ -6,6 +6,7 @@ import { Send, Flame, ChevronLeft, ShieldCheck, AlertTriangle, Ghost } from "luc
 import { AI_CHARACTERS, N8N_WEBHOOK, T, CHARACTER_ID_MAP, getUserId } from "@/lib/constants";
 import { useGhostMode } from "@/hooks/use-ghost-mode";
 import { useTranslation } from "react-i18next";
+import { extractReply } from "../../../../shared/utils/aiParser";
 
 // ── Types ──────────────────────────────────────────────────
 interface Msg {
@@ -23,10 +24,8 @@ async function sendToN8n(characterId: string, message: string): Promise<string> 
     body:    JSON.stringify({ message, userId: getUserId(), characterId }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  const reply = data?.reply ?? data?.message ?? data?.text ?? data?.output ?? null;
-  if (!reply) throw new Error("no reply field");
-  return String(reply);
+  const raw = await res.text();
+  return extractReply(raw);
 }
 
 // ── Component ──────────────────────────────────────────────

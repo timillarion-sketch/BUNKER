@@ -3,11 +3,11 @@
 // ─────────────────────────────────────────────────────────
 
 export const API_BASE_URL = "/api";
-export const N8N_WEBHOOK  = "https://timgood.app.n8n.cloud/webhook-test/bunkerV2";
+export const N8N_WEBHOOK  = "https://timki.app.n8n.cloud/webhook/BunkerV2.4";
 
 export const CHARACTER_ID_MAP: Record<string, string> = {
-  psychologist: "psycho",
-  altushka: "altushka",
+  psychologist: "psychologist",
+  altushka: "alt",
   alfons: "alfons",
   "content-producer": "producer",
 };

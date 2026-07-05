@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Linking,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import { theme } from '../theme';
-import { api } from '../core';
+import { api, storage, ApiError } from '../core';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const YANDEX_CLIENT_ID = '93f7e6c6b16c42c89c91ebb5923a6c32';
-const TELEGRAM_BOT_URL = 'https://t.me/BunkerUserBot';
 
 type RootStackParamList = {
   Login: undefined;
@@ -37,10 +36,23 @@ export default function LoginScreen({ navigation }: Props) {
       const res = await api.post<{ accessToken: string; refreshToken: string }>('/api/auth/login', { username, password });
       await api.setToken(res.accessToken);
       await api.setRefreshToken(res.refreshToken);
+      try {
+        const payload = JSON.parse(atob(res.accessToken.split('.')[1]));
+        if (payload.username) {
+          await storage.set('current_username', payload.username);
+        }
+      } catch {}
       navigation.replace('MainTabs');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Ошибка подключения';
-      Alert.alert('Ошибка входа', msg);
+      if (e instanceof ApiError && e.status !== 0) {
+        Alert.alert('Ошибка входа', msg);
+      } else {
+        Alert.alert('Ошибка сети', 'Не удалось подключиться к серверу. Проверьте соединение.', [
+          { text: 'Отмена', style: 'cancel' },
+          { text: 'Повторить', onPress: handleLogin },
+        ]);
+      }
     } finally {
       setLoading(false);
     }
@@ -71,6 +83,12 @@ export default function LoginScreen({ navigation }: Props) {
 
       await api.setToken(res.accessToken);
       await api.setRefreshToken(res.refreshToken);
+      try {
+        const payload = JSON.parse(atob(res.accessToken.split('.')[1]));
+        if (payload.username) {
+          await storage.set('current_username', payload.username);
+        }
+      } catch {}
       navigation.replace('MainTabs');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Ошибка авторизации';
@@ -78,19 +96,46 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
-  const handleTelegramRegister = () => {
-    Linking.openURL(TELEGRAM_BOT_URL);
+  const handleTelegramLogin = async () => {
+    setLoading(true);
+    try {
+      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'bunker', path: 'auth/success' });
+      const authUrl = `${api.baseUrl}/auth/telegram/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+      if (result.type !== 'success') {
+        return;
+      }
+
+      const url = new URL(result.url);
+      const accessToken = url.searchParams.get('accessToken');
+      const refreshToken = url.searchParams.get('refreshToken');
+
+      if (!accessToken || !refreshToken) {
+        Alert.alert('Ошибка', 'Не удалось получить токены');
+        return;
+      }
+
+      await api.setToken(accessToken);
+      await api.setRefreshToken(refreshToken);
+      try {
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        if (payload.username) {
+          await storage.set('current_username', payload.username);
+        }
+      } catch {}
+      navigation.replace('MainTabs');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Ошибка авторизации';
+      Alert.alert('Ошибка', msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.scanlines} pointerEvents="none" />
-
-      <Text style={styles.cornerTL}>╔</Text>
-      <Text style={styles.cornerTR}>╗</Text>
-      <Text style={styles.cornerBL}>╚</Text>
-      <Text style={styles.cornerBR}>╝</Text>
-
       <Text style={styles.title}>БУНКЕР</Text>
       <Text style={styles.subtitle}>ЗАЩИЩЁННЫЙ ВХОД</Text>
       <TextInput
@@ -127,8 +172,12 @@ export default function LoginScreen({ navigation }: Props) {
         <Text style={styles.yandexButtonText}>Войти через Яндекс ID</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.telegramButton} onPress={handleTelegramRegister}>
-        <Text style={styles.telegramButtonText}>Регистрация через Telegram</Text>
+      <TouchableOpacity
+        style={[styles.telegramButton, loading && styles.buttonDisabled]}
+        onPress={handleTelegramLogin}
+        disabled={loading}
+      >
+        <Text style={styles.telegramButtonText}>Войти через Telegram</Text>
       </TouchableOpacity>
 
       <Text style={styles.version}>// AUTH v1.0</Text>
@@ -144,53 +193,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
-  scanlines: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.03,
-    backgroundColor: '#00f0ff',
-    pointerEvents: 'none',
-  },
-
-  cornerTL: {
-    position: 'absolute',
-    top: 48,
-    left: 20,
-    color: theme.colors.accent,
-    fontSize: 18,
-    fontFamily: theme.fonts.mono,
-    opacity: 0.4,
-  },
-  cornerTR: {
-    position: 'absolute',
-    top: 48,
-    right: 20,
-    color: theme.colors.accent,
-    fontSize: 18,
-    fontFamily: theme.fonts.mono,
-    opacity: 0.4,
-  },
-  cornerBL: {
-    position: 'absolute',
-    bottom: 100,
-    left: 20,
-    color: theme.colors.accent,
-    fontSize: 18,
-    fontFamily: theme.fonts.mono,
-    opacity: 0.4,
-  },
-  cornerBR: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
-    color: theme.colors.accent,
-    fontSize: 18,
-    fontFamily: theme.fonts.mono,
-    opacity: 0.4,
-  },
-
   title: {
     fontSize: 44,
-    fontWeight: '800',
+    fontWeight: '600',
     color: theme.colors.accent,
     letterSpacing: 14,
     marginBottom: 4,
@@ -205,26 +210,23 @@ const styles = StyleSheet.create({
     marginBottom: 48,
     fontFamily: theme.fonts.mono,
   },
-
   input: {
     width: '100%',
     height: 52,
-    backgroundColor: 'rgba(10,10,26,0.9)',
+    backgroundColor: 'rgba(25,25,27,0.65)',
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.sm,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
     paddingHorizontal: 18,
     marginBottom: 14,
     color: theme.colors.text,
     fontSize: 15,
-    fontFamily: theme.fonts.mono,
   },
-
   button: {
     width: '100%',
     height: 52,
     backgroundColor: theme.colors.accent,
-    borderRadius: theme.radius.sm,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
@@ -238,11 +240,9 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#000',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 4,
-    fontFamily: theme.fonts.mono,
   },
-
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -252,63 +252,47 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   dividerText: {
     color: theme.colors.textMuted,
     fontSize: 10,
     marginHorizontal: 14,
     letterSpacing: 4,
-    fontFamily: theme.fonts.mono,
   },
-
   yandexButton: {
     width: '100%',
     height: 52,
-    backgroundColor: 'rgba(255,0,110,0.12)',
+    backgroundColor: 'rgba(25,25,27,0.65)',
     borderWidth: 1,
     borderColor: theme.colors.accentPink,
-    borderRadius: theme.radius.sm,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    shadowColor: theme.colors.accentPink,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
   },
   yandexButtonText: {
     color: theme.colors.accentPink,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 3,
-    fontFamily: theme.fonts.mono,
   },
-
   telegramButton: {
     width: '100%',
     height: 52,
-    backgroundColor: 'rgba(124,58,237,0.08)',
+    backgroundColor: 'rgba(25,25,27,0.65)',
     borderWidth: 1,
     borderColor: theme.colors.accentPurple,
-    borderRadius: theme.radius.sm,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: theme.colors.accentPurple,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
   },
   telegramButtonText: {
     color: theme.colors.accentPurple,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 3,
-    fontFamily: theme.fonts.mono,
   },
-
   version: {
     position: 'absolute',
     bottom: 32,

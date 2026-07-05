@@ -12,7 +12,7 @@
       },
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://176.12.72.246:8080",
+        "EXPO_PUBLIC_API_URL": "https://176.12.72.246.nip.io",
         "GRADLE_OPTS": "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain"
       }
     },
@@ -23,7 +23,8 @@
       },
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://176.12.72.246:8080"
+        "EXPO_PUBLIC_API_URL": "https://176.12.72.246.nip.io",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },

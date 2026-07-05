@@ -47,7 +47,9 @@ router.get('/:provider/authorize', (req, res) => {
     ? process.env.VK_CLIENT_ID
     : process.env.YANDEX_CLIENT_ID;
 
-  const callbackUrl = `${process.env.API_URL ?? 'http://localhost:4000'}/api/auth/${provider}/callback`;
+  const callbackUrl = provider === 'yandex' && process.env.YANDEX_REDIRECT_URI
+    ? process.env.YANDEX_REDIRECT_URI
+    : `${process.env.API_URL ?? 'http://localhost:4000'}/api/auth/${provider}/callback`;
 
   const providerUrls: Record<string, string> = {
     vk: 'https://oauth.vk.com/authorize',

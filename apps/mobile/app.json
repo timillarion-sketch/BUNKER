@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Бункер",
-    "slug": "bunker",
+    "slug": "buunker",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "bunker",
@@ -28,6 +28,8 @@
         "FOREGROUND_SERVICE_CONNECTED_CAMERA",
         "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
+      "usesCleartextTraffic": true,
+      "softwareKeyboardLayoutMode": "adjustResize",
       "predictiveBackGestureEnabled": false,
       "networkSecurityConfig": "./network-security-config.xml"
     },
@@ -62,9 +64,8 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "1eabf413-70fe-43cd-a796-45c47fb1b099"
+        "projectId": "d743c577-de77-48d4-ba8e-b1ce85cc36de"
       }
     },
-    "owner": "timgood"
   }
 }

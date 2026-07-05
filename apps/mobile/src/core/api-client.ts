@@ -1,4 +1,5 @@
 import type { IStorage } from "./storage";
+import { fetchWithRetry } from "./network";
 
 export class ApiError extends Error {
   constructor(
@@ -13,7 +14,7 @@ export class ApiError extends Error {
 
 export class ApiClient {
   constructor(
-    private baseUrl: string,
+    public baseUrl: string,
     private storage: IStorage,
   ) {}
 
@@ -39,7 +40,7 @@ export class ApiClient {
     if (!refreshToken) return null;
 
     try {
-      const res = await fetch(`${this.baseUrl}/auth/refresh`, {
+      const res = await fetchWithRetry(`${this.baseUrl}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
@@ -71,7 +72,7 @@ export class ApiClient {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      return fetch(`${this.baseUrl}${path}`, { ...options, headers });
+      return fetchWithRetry(`${this.baseUrl}${path}`, { ...options, headers });
     };
 
     let token = await this.getToken();

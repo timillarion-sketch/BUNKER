@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { api } from '@/core';
 import { FeedVideo, FeedPage } from '@/core/types/feed';
 
@@ -6,46 +6,62 @@ export function useFeed() {
   const [videos, setVideos] = useState<FeedVideo[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
+  const cursorRef = useRef<string | null>(null);
+  const hasMoreRef = useRef(true);
+  const isLoadingRef = useRef(false);
 
   const fetchPage = useCallback(async (nextCursor: string | null, isRefresh = false) => {
-    setIsLoading(true);
+    if (isLoadingRef.current && !isRefresh) return;
+    isLoadingRef.current = true;
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
+
     try {
       const query = new URLSearchParams();
       if (nextCursor) query.set('cursor', nextCursor);
       query.set('limit', '10');
       const data = await api.get<FeedPage>(`/api/feed?${query.toString()}`);
+
       if (isRefresh) {
         setVideos(data.videos);
-        setCursor(data.nextCursor);
-        setHasMore(!!data.nextCursor);
+        cursorRef.current = data.nextCursor;
+        hasMoreRef.current = !!data.nextCursor;
       } else {
-        setVideos((prev) => [...prev, ...data.videos]);
-        setCursor(data.nextCursor);
-        setHasMore(!!data.nextCursor);
+        setVideos((prev) => {
+          const existingIds = new Set(prev.map((v) => v.id));
+          const newVids = data.videos.filter((v) => !existingIds.has(v.id));
+          return [...prev, ...newVids];
+        });
+        cursorRef.current = data.nextCursor;
+        hasMoreRef.current = !!data.nextCursor;
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Ошибка загрузки ленты';
       setError(msg);
     } finally {
+      isLoadingRef.current = false;
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
   const loadMore = useCallback(() => {
-    if (!isLoading && hasMore && cursor !== null) {
-      fetchPage(cursor);
-    } else if (!isLoading && hasMore && cursor === null && videos.length === 0) {
+    if (!isLoadingRef.current && hasMoreRef.current) {
+      fetchPage(cursorRef.current);
+    } else if (!isLoadingRef.current && cursorRef.current === null && videos.length === 0) {
       fetchPage(null);
     }
-  }, [isLoading, hasMore, cursor, videos.length, fetchPage]);
+  }, [videos.length, fetchPage]);
 
   const refresh = useCallback(() => {
-    setCursor(null);
-    setHasMore(true);
+    cursorRef.current = null;
+    hasMoreRef.current = true;
     fetchPage(null, true);
   }, [fetchPage]);
 
@@ -55,6 +71,7 @@ export function useFeed() {
     setCurrentIndex,
     loadMore,
     isLoading,
+    isRefreshing,
     error,
     refresh,
   };

@@ -6,7 +6,7 @@ import { api } from '../core';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const BACKEND_URL = 'http://176.12.72.246:8080';
+const BACKEND_URL = 'http://176.12.72.246.nip.io';
 
 export type OAuthProvider = 'vk' | 'yandex';
 

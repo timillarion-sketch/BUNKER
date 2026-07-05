@@ -29,6 +29,40 @@ export const WEBVIEW_INJECTED_JS = `
   })();
 `;
 
+export const NEURAL_ANALYSIS_JS = `
+  (function() {
+    function removeAds() {
+      var selectors = [
+        'iframe[src*="doubleclick"]', 'iframe[src*="adsystem"]',
+        'ins.adsbygoogle', '.advertisement', '.ad-container',
+        '[id*="google_ads"]', '[id*="taboola"]', '[id*="outbrain"]',
+        '[class*="ad "]', '[class*="ads-"]', '.banner-ad',
+        'amp-ad', '[data-ad]', '[data-ads]', '[data-ad-slot]',
+        '.ad-rectangle', '.ad-banner', '.adsbygoogle',
+        'div[data-aaad]', 'div[data-aa-css"]',
+        '#ad-blocker-detected', '[class*="trc_"]',
+      ];
+      selectors.forEach(function(sel) {
+        try {
+          document.querySelectorAll(sel).forEach(function(el) { el.remove(); });
+        } catch(e) {}
+      });
+      var iframes = document.querySelectorAll('iframe');
+      iframes.forEach(function(f) {
+        try {
+          var src = (f.getAttribute('src') || '').toLowerCase();
+          if (src.includes('ads') || src.includes('track') || src.includes('analytics') || src.includes('pixel')) {
+            f.remove();
+          }
+        } catch(e) {}
+      });
+      document.querySelectorAll('script[src*="analytics"], script[src*="track"], script[src*="pixel"]').forEach(function(s) { s.remove(); });
+    }
+    removeAds();
+    new MutationObserver(function() { removeAds(); }).observe(document.body, { childList: true, subtree: true });
+  })();
+`;
+
 export const BLOCKED_URL_PATTERNS = [
   'javascript:',
   'data:text/html',

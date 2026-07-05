@@ -17,6 +17,9 @@ const envSchema = z.object({
   VK_CLIENT_SECRET: z.string().default(""),
   YANDEX_CLIENT_ID: z.string().default(""),
   YANDEX_CLIENT_SECRET: z.string().default(""),
+  YANDEX_REDIRECT_URI: z.string().default(""),
+  TELEGRAM_BOT_TOKEN: z.string().min(1),
+  TELEGRAM_BOT_USERNAME: z.string().default("BunkerUserbot"),
 });
 
 let _env: z.infer<typeof envSchema> | null = null;

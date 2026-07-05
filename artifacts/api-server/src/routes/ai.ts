@@ -5,6 +5,7 @@ import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 import { aiQueue } from "../lib/ai-queue";
 import { broadcastSse } from "../lib/sse-manager";
 import { getEnv } from "../lib/env";
+import { extractReply } from "../../../../shared/utils/aiParser";
 
 const router: IRouter = Router();
 
@@ -21,9 +22,13 @@ aiQueue.setHandler(async (task) => {
   const env = getEnv();
   const webhookUrl = env.N8N_WEBHOOK;
 
-  logger.info({ taskId: task.id, characterId: task.characterId }, "Sending to n8n webhook");
+  logger.info({
+    taskId: task.id,
+    characterId: task.characterId,
+    userId: task.userId,
+    messageLength: task.message.length,
+  }, "Sending to n8n webhook");
 
-  // Publish typing event for this user
   await broadcastSse("typing", {
     userId: task.userId,
     characterId: task.characterId,
@@ -34,35 +39,39 @@ aiQueue.setHandler(async (task) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
+    const body = JSON.stringify({
+      message: task.message,
+      userId: String(task.userId),
+      characterId: task.characterId,
+    });
+
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: task.message,
-        userId: String(task.userId),
-        characterId: task.characterId,
-      }),
+      body,
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
+    logger.info({ status: response.status, taskId: task.id }, "n8n webhook response status");
+
     if (!response.ok) {
-      logger.error({ status: response.status }, "n8n webhook error");
+      const responseBody = await response.text().catch(() => "unreadable");
+      logger.error({ status: response.status, body: responseBody, taskId: task.id }, "n8n webhook error");
       throw new Error(`n8n returned status ${response.status}`);
     }
 
-    const data = await response.json() as Record<string, unknown>;
-    const reply = data?.reply ?? data?.message ?? data?.text ?? data?.output ?? null;
+    const raw = await response.text();
+    logger.info({ taskId: task.id, rawLength: raw.length }, "n8n webhook raw response");
 
-    if (!reply) {
-      logger.error({ data }, "unexpected n8n response format");
-      throw new Error("Invalid AI response format");
-    }
+    const reply = extractReply(raw);
 
-    return String(reply);
+    logger.info({ taskId: task.id, replyLength: reply.length }, "n8n reply received");
+    return reply;
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
+      logger.error({ taskId: task.id }, "AI gateway timeout");
       throw new Error("AI gateway timeout");
     }
     throw err;
@@ -76,20 +85,36 @@ aiQueue.setHandler(async (task) => {
 });
 
 router.post("/ai/chat", requireAuth, aiLimiter, async (req: AuthenticatedRequest, res: Response) => {
-  const { message, characterId } = req.body;
+  const { messages, message: singleMessage, characterId } = req.body;
 
-  if (!message || typeof message !== "string") {
-    res.status(400).json({ error: "message is required" });
+  logger.info({ userId: req.userId, characterId }, "AI chat request received");
+
+  if (!characterId || typeof characterId !== "string") {
+    res.status(400).json({ error: "characterId is required" });
+    return;
+  }
+
+  let message: string;
+
+  if (Array.isArray(messages) && messages.length > 0) {
+    const last = messages[messages.length - 1];
+    message = typeof last?.content === "string" ? last.content : "";
+    logger.info({ messagesCount: messages.length, lastRole: last?.role }, "Extracted message from messages array");
+  } else if (typeof singleMessage === "string") {
+    message = singleMessage;
+    logger.info("Using single message field");
+  } else {
+    res.status(400).json({ error: "messages array or message string is required" });
+    return;
+  }
+
+  if (!message) {
+    res.status(400).json({ error: "message content is empty" });
     return;
   }
 
   if (message.length > 10000) {
     res.status(400).json({ error: "Message too long" });
-    return;
-  }
-
-  if (!characterId || typeof characterId !== "string") {
-    res.status(400).json({ error: "characterId is required" });
     return;
   }
 
@@ -101,14 +126,15 @@ router.post("/ai/chat", requireAuth, aiLimiter, async (req: AuthenticatedRequest
       message,
     });
 
+    logger.info({ userId: req.userId, characterId }, "AI chat reply sent");
     res.json({ reply });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "AI service unreachable";
-    const status = message.includes("timeout") ? 504
-      : message.includes("format") ? 502
+    const errorMessage = err instanceof Error ? err.message : "AI service unreachable";
+    const status = errorMessage.includes("timeout") ? 504
+      : errorMessage.includes("format") ? 502
       : 502;
-    logger.error({ err }, "AI chat failed");
-    res.status(status).json({ error: message });
+    logger.error({ err, userId: req.userId, characterId }, "AI chat failed");
+    res.status(status).json({ error: errorMessage });
   }
 });
 
