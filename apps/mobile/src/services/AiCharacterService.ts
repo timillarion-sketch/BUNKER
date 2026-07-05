@@ -2,7 +2,7 @@ import { storage, API_URL } from '@/core';
 import { getUserId } from '@/core/constants';
 import { fetchWithRetry } from '@/core/network';
 
-const TIMEOUT_MS = 30000;
+const TIMEOUT_MS = 60000;
 const CONTEXT_WINDOW = 20;
 
 const FALLBACK_REPLY = '[Персонаж временно недоступен. Попробуйте позже.]';
