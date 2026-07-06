@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Бункер",
-    "slug": "buunker",
+    "slug": "bbunker",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "bunker",
@@ -64,8 +64,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "d743c577-de77-48d4-ba8e-b1ce85cc36de"
+        "projectId": "56609595-7e9c-429c-bafe-0923a081ff67"
       }
     },
+    "owner": "timkiii"
   }
 }
