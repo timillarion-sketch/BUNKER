@@ -52,3 +52,9 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Build artifacts / junk
+.pnpm-store/
+bunker_backup.tar
+repomix-output.xml
+nginx.conf.bak

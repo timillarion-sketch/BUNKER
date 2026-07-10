@@ -11,6 +11,7 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default("1h"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
   N8N_WEBHOOK: z.string().url(),
+N8N_SYNC_KEY: z.string().min(1),
   API_URL: z.string().default("http://localhost:4000"),
   FRONTEND_URL: z.string().default("http://localhost:80"),
   VK_CLIENT_ID: z.string().default(""),

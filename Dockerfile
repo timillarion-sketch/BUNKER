@@ -4,6 +4,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 COPY lib/ lib/
+COPY shared/ shared/
 COPY artifacts/api-server/ artifacts/api-server/
 COPY artifacts/bunker/ artifacts/bunker/
 
@@ -20,6 +21,7 @@ COPY --from=builder /app/artifacts/api-server/dist /app/artifacts/api-server/dis
 COPY --from=builder /app/artifacts/api-server/package.json /app/artifacts/api-server/
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 COPY lib/ lib/
+COPY shared/ shared/
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 RUN addgroup -g 1001 nodegroup && \
     adduser -u 1001 -G nodegroup -s /bin/sh -D nodeuser
@@ -37,6 +39,7 @@ COPY --from=builder /app/artifacts/api-server/dist /app/artifacts/api-server/dis
 COPY --from=builder /app/artifacts/api-server/package.json /app/artifacts/api-server/
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 COPY lib/ lib/
+COPY shared/ shared/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 RUN addgroup -g 1001 nodegroup && \
     adduser -u 1001 -G nodegroup -s /bin/sh -D nodeuser

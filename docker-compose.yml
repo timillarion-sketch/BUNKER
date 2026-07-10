@@ -58,6 +58,7 @@ services:
     env_file:
       - .env
     environment:
+      NODE_ENV: production
       API_URL: https://176.12.72.246.nip.io
       FRONTEND_URL: https://176.12.72.246.nip.io
       VK_CLIENT_ID: ${VK_CLIENT_ID}

@@ -10,6 +10,7 @@ export const usersTable = pgTable("users", {
   authProviderId: text("auth_provider_id"),
   telegramId: bigint("telegram_id", { mode: "number" }),
   publicKey: text("public_key"),
+  bunkerId: text("bunker_id").unique(),
   vpnClientKey: text("vpn_client_key"),
   meshEnabled: boolean("mesh_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),

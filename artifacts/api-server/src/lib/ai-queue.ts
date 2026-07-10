@@ -36,27 +36,18 @@ class AIQueue {
         ...task,
         execute: async () => {
           if (!this.handler) throw new Error("No handler set");
-          return this.handler(task);
+          try {
+            const result = await this.handler(task);
+            resolve(result);
+            return result;
+          } catch (err) {
+            reject(err);
+            throw err;
+          }
         },
       };
 
       this.queue.push(wrapped);
-      this.processNext();
-
-      // We need to resolve when this specific task completes
-      // Override execute to resolve/reject the promise
-      const originalExecute = wrapped.execute.bind(wrapped);
-      wrapped.execute = async () => {
-        try {
-          const result = await originalExecute();
-          resolve(result);
-          return result;
-        } catch (err) {
-          reject(err);
-          throw err;
-        }
-      };
-
       this.processNext();
     });
   }

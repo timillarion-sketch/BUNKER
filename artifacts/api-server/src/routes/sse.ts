@@ -57,6 +57,10 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
     res.write(`event: conversation\ndata: ${JSON.stringify(data)}\n\n`);
   });
 
+  const unsubP2p = subscribe("p2p_message", (data) => {
+    res.write(`event: p2p_message\ndata: ${JSON.stringify(data)}\n\n`);
+  });
+
   const keepAlive = setInterval(() => {
     try {
       res.write(":keepalive\n\n");
@@ -70,6 +74,7 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
     unsubMessage();
     unsubTyping();
     unsubConversation();
+    unsubP2p();
     clearInterval(keepAlive);
     removeSseClient(clientId);
   };

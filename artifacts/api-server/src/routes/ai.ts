@@ -29,11 +29,15 @@ aiQueue.setHandler(async (task) => {
     messageLength: task.message.length,
   }, "Sending to n8n webhook");
 
-  await broadcastSse("typing", {
-    userId: task.userId,
-    characterId: task.characterId,
-    typing: true,
-  });
+  try {
+    await broadcastSse("typing", {
+      userId: task.userId,
+      characterId: task.characterId,
+      typing: true,
+    });
+  } catch {
+    // non-critical — typing indicator, ignore SSE errors
+  }
 
   try {
     const controller = new AbortController();
@@ -76,11 +80,15 @@ aiQueue.setHandler(async (task) => {
     }
     throw err;
   } finally {
-    await broadcastSse("typing", {
-      userId: task.userId,
-      characterId: task.characterId,
-      typing: false,
-    });
+    try {
+      await broadcastSse("typing", {
+        userId: task.userId,
+        characterId: task.characterId,
+        typing: false,
+      });
+    } catch {
+      // non-critical — typing indicator, ignore SSE errors
+    }
   }
 });
 

@@ -36,6 +36,20 @@
       "when": 1782659465139,
       "tag": "0004_little_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783546111593,
+      "tag": "0005_outstanding_medusa",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783633576626,
+      "tag": "0006_aberrant_maginty",
+      "breakpoints": true
     }
   ]
 }

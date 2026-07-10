@@ -14,6 +14,8 @@ import feedRouter from "./feed";
 import interactionRouter from "./interaction";
 import authTelegramRouter from "./auth-telegram";
 import botRouter from "./bot";
+import p2pRouter from "./p2p";
+import contentRouter from "./content";
 
 const router: IRouter = Router();
 
@@ -32,5 +34,7 @@ router.use(feedRouter);
 router.use(interactionRouter);
 router.use(authTelegramRouter);
 router.use(botRouter);
+router.use(contentRouter);
+router.use(p2pRouter);
 
 export default router;
