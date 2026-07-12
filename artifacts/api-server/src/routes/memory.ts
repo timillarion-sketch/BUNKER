@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Response } from "express";
-import { db, memorySettingsTable, userMemoryFactsTable, charactersTable } from "@workspace/db";
+import { db, memorySettingsTable, userMemoryFactsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 
@@ -130,19 +130,6 @@ router.post("/memory/facts", requireAuth, async (req: AuthenticatedRequest, res:
   if (scope === "personal" && (!characterId || typeof characterId !== "string")) {
     res.status(400).json({ error: "characterId is required for personal scope" });
     return;
-  }
-
-  if (characterId) {
-    const [char] = await db
-      .select({ id: charactersTable.id })
-      .from(charactersTable)
-      .where(eq(charactersTable.id, characterId))
-      .limit(1);
-
-    if (!char) {
-      res.status(400).json({ error: "Character not found" });
-      return;
-    }
   }
 
   try {
