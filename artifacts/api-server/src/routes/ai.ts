@@ -1,11 +1,14 @@
 import { Router, type IRouter, type Response } from "express";
 import rateLimit from "express-rate-limit";
+import { db, conversationsTable, messagesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 import { aiQueue } from "../lib/ai-queue";
 import { broadcastSse } from "../lib/sse-manager";
 import { getEnv } from "../lib/env";
 import { extractReply } from "../../../../shared/utils/aiParser";
+import { buildMemoryContext, formatMemoryContext } from "../lib/memory-context";
 
 const router: IRouter = Router();
 
@@ -17,7 +20,6 @@ const aiLimiter = rateLimit({
   message: { error: "AI rate limit exceeded. Try again later." },
 });
 
-// Set up the queue handler
 aiQueue.setHandler(async (task) => {
   const env = getEnv();
   const webhookUrl = env.N8N_WEBHOOK;
@@ -40,6 +42,11 @@ aiQueue.setHandler(async (task) => {
   }
 
   try {
+    const memoryCtx = await buildMemoryContext(Number(task.userId), task.characterId);
+    const memoryContext = formatMemoryContext(memoryCtx);
+
+    logger.info({ memoryContext, taskId: task.id, userId: task.userId, characterId: task.characterId }, "Memory context built for n8n");
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
@@ -47,6 +54,7 @@ aiQueue.setHandler(async (task) => {
       message: task.message,
       userId: String(task.userId),
       characterId: task.characterId,
+      memoryContext: memoryContext || undefined,
     });
 
     const response = await fetch(webhookUrl, {
@@ -70,6 +78,41 @@ aiQueue.setHandler(async (task) => {
     logger.info({ taskId: task.id, rawLength: raw.length }, "n8n webhook raw response");
 
     const reply = extractReply(raw);
+
+    // Save messages to DB
+    try {
+      const userIdNum = Number(task.userId);
+
+      let [conv] = await db
+        .select()
+        .from(conversationsTable)
+        .where(
+          and(
+            eq(conversationsTable.userId, userIdNum),
+            eq(conversationsTable.characterId, task.characterId),
+          ),
+        )
+        .limit(1);
+
+      if (!conv) {
+        [conv] = await db
+          .insert(conversationsTable)
+          .values({ userId: userIdNum, characterId: task.characterId, title: `Chat with ${task.characterId}` })
+          .returning();
+      }
+
+      await db.insert(messagesTable).values([
+        { conversationId: conv.id, role: "user", content: task.message, encrypted: false },
+        { conversationId: conv.id, role: "assistant", content: reply, encrypted: false },
+      ]);
+
+      await db
+        .update(conversationsTable)
+        .set({ updatedAt: new Date() })
+        .where(eq(conversationsTable.id, conv.id));
+    } catch (saveErr) {
+      logger.error({ err: saveErr, taskId: task.id }, "Failed to save AI chat messages");
+    }
 
     logger.info({ taskId: task.id, replyLength: reply.length }, "n8n reply received");
     return reply;

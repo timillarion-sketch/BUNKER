@@ -16,6 +16,7 @@ import authTelegramRouter from "./auth-telegram";
 import botRouter from "./bot";
 import p2pRouter from "./p2p";
 import contentRouter from "./content";
+import memoryRouter from "./memory";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(authTelegramRouter);
 router.use(botRouter);
 router.use(contentRouter);
 router.use(p2pRouter);
+router.use(memoryRouter);
 
 export default router;

@@ -50,6 +50,20 @@
       "when": 1783633576626,
       "tag": "0006_aberrant_maginty",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783772519222,
+      "tag": "0007_fat_omega_sentinel",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783814309435,
+      "tag": "0008_minor_lady_deathstrike",
+      "breakpoints": true
     }
   ]
 }
