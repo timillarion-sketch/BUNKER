@@ -10,6 +10,30 @@ import { requireAuth, signToken, verifyRefreshToken, type AuthenticatedRequest }
 import { getEnv } from "../lib/env";
 import { getCallbackUrl } from "../lib/oauth";
 
+function generateBnkrId(userId: number, attempt = 0): string {
+  const seed = attempt === 0 ? String(userId) : `${userId}-${attempt}`;
+  const hash = crypto.createHash("md5").update(seed).digest("hex");
+  return `BNKR-${hash.slice(0, 4).toUpperCase()}-${hash.slice(4, 8).toUpperCase()}`;
+}
+
+async function assignBnkrId(userId: number): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const bunkerId = generateBnkrId(userId, attempt);
+    try {
+      await db
+        .update(usersTable)
+        .set({ bunkerId })
+        .where(eq(usersTable.id, userId));
+      return bunkerId;
+    } catch (err: unknown) {
+      const pgErr = err as { code?: string };
+      if (pgErr?.code === "23505" && attempt < 4) continue;
+      throw err;
+    }
+  }
+  throw new Error("Failed to assign unique BNKR ID after 5 attempts");
+}
+
 const router: IRouter = Router();
 
 // Brute-force protection for auth endpoints
@@ -18,7 +42,7 @@ const authLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many attempts. Try again later." },
+  message: { error: "Слишком много попыток. Попробуйте позже." },
 });
 
 // POST /api/auth/register
@@ -30,12 +54,12 @@ router.post("/auth/register", authLimiter, async (req, res: Response) => {
   };
 
   if (!username || typeof username !== "string" || username.length < 3) {
-    res.status(400).json({ error: "Username must be at least 3 characters" });
+    res.status(400).json({ error: "Имя пользователя должно содержать не менее 3 символов" });
     return;
   }
 
   if (!password || typeof password !== "string" || password.length < 6) {
-    res.status(400).json({ error: "Password must be at least 6 characters" });
+    res.status(400).json({ error: "Пароль должен содержать не менее 6 символов" });
     return;
   }
 
@@ -47,7 +71,7 @@ router.post("/auth/register", authLimiter, async (req, res: Response) => {
       .limit(1);
 
     if (existing.length > 0) {
-      res.status(409).json({ error: "Username already taken" });
+      res.status(409).json({ error: "Имя пользователя уже занято" });
       return;
     }
 
@@ -62,6 +86,8 @@ router.post("/auth/register", authLimiter, async (req, res: Response) => {
         authProvider: "credentials",
       })
       .returning();
+
+    const bunkerId = await assignBnkrId(user.id);
 
     const sessionId = crypto.randomUUID();
     const { accessToken, refreshToken } = signToken(user.id, sessionId);
@@ -86,6 +112,7 @@ router.post("/auth/register", authLimiter, async (req, res: Response) => {
         username: user.username,
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
+        bunkerId,
         publicKey: user.publicKey,
         vpnClientKey: user.vpnClientKey,
         meshEnabled: user.meshEnabled,
@@ -95,7 +122,7 @@ router.post("/auth/register", authLimiter, async (req, res: Response) => {
     });
   } catch (err) {
     logger.error(err, "Registration failed");
-    res.status(500).json({ error: "Registration failed" });
+    res.status(500).json({ error: "Не удалось зарегистрироваться. Попробуйте ещё раз." });
   }
 });
 
@@ -107,7 +134,7 @@ router.post("/auth/login", authLimiter, async (req, res: Response) => {
   };
 
   if (!username || !password) {
-    res.status(400).json({ error: "Username and password are required" });
+    res.status(400).json({ error: "Имя пользователя и пароль обязательны" });
     return;
   }
 
@@ -119,15 +146,17 @@ router.post("/auth/login", authLimiter, async (req, res: Response) => {
       .limit(1);
 
     if (!user || !user.passwordHash) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Неправильный логин или пароль" });
       return;
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ error: "Неправильный логин или пароль" });
       return;
     }
+
+    const bunkerId = user.bunkerId ?? await assignBnkrId(user.id);
 
     const sessionId = crypto.randomUUID();
     const { accessToken, refreshToken } = signToken(user.id, sessionId);
@@ -152,6 +181,7 @@ router.post("/auth/login", authLimiter, async (req, res: Response) => {
         username: user.username,
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
+        bunkerId,
         publicKey: user.publicKey,
         vpnClientKey: user.vpnClientKey,
         meshEnabled: user.meshEnabled,
@@ -161,7 +191,7 @@ router.post("/auth/login", authLimiter, async (req, res: Response) => {
     });
   } catch (err) {
     logger.error({ err }, "Login failed");
-    res.status(500).json({ error: "Internal error" });
+    res.status(500).json({ error: "Внутренняя ошибка. Попробуйте ещё раз." });
   }
 });
 
@@ -170,7 +200,7 @@ router.post("/auth/refresh", async (req, res: Response) => {
   const { refreshToken: token } = req.body as { refreshToken?: string };
 
   if (!token) {
-    res.status(400).json({ error: "Refresh token is required" });
+    res.status(400).json({ error: "Требуется токен обновления" });
     return;
   }
 
@@ -189,13 +219,13 @@ router.post("/auth/refresh", async (req, res: Response) => {
       .limit(1);
 
     if (!existing) {
-      res.status(401).json({ error: "Invalid session" });
+      res.status(401).json({ error: "Недействительная сессия" });
       return;
     }
 
     if (new Date() > existing.refreshExpiresAt) {
       await db.delete(sessionsTable).where(eq(sessionsTable.id, existing.id));
-      res.status(401).json({ error: "Session expired" });
+      res.status(401).json({ error: "Сессия истекла" });
       return;
     }
 
@@ -218,7 +248,7 @@ router.post("/auth/refresh", async (req, res: Response) => {
   } catch (err) {
     if (err instanceof AppError) throw err;
     logger.error(err, "Token refresh failed");
-    res.status(401).json({ error: "Invalid refresh token" });
+    res.status(401).json({ error: "Недействительный токен обновления" });
   }
 });
 
@@ -235,7 +265,7 @@ router.post("/auth/logout", requireAuth, async (req: AuthenticatedRequest, res: 
     res.json({ success: true });
   } catch (err) {
     logger.error(err, "Logout failed");
-    res.status(500).json({ error: "Logout failed" });
+    res.status(500).json({ error: "Не удалось выйти. Попробуйте ещё раз." });
   }
 });
 
@@ -249,7 +279,7 @@ router.get("/auth/me", requireAuth, async (req: AuthenticatedRequest, res: Respo
       .limit(1);
 
     if (!user) {
-      res.status(404).json({ error: "User not found" });
+      res.status(404).json({ error: "Пользователь не найден" });
       return;
     }
 
@@ -258,13 +288,14 @@ router.get("/auth/me", requireAuth, async (req: AuthenticatedRequest, res: Respo
       username: user.username,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      bunkerId: user.bunkerId,
       publicKey: user.publicKey,
       vpnClientKey: user.vpnClientKey,
       meshEnabled: user.meshEnabled,
     });
   } catch (err) {
     logger.error(err, "Failed to fetch user");
-    res.status(500).json({ error: "Failed to fetch user" });
+    res.status(500).json({ error: "Не удалось загрузить пользователя" });
   }
 });
 
@@ -281,7 +312,7 @@ router.put("/auth/settings", requireAuth, async (req: AuthenticatedRequest, res:
     if (meshEnabled !== undefined) updates.meshEnabled = meshEnabled;
 
     if (Object.keys(updates).length === 0) {
-      res.status(400).json({ error: "No fields to update" });
+      res.status(400).json({ error: "Нет полей для обновления" });
       return;
     }
 
@@ -293,7 +324,7 @@ router.put("/auth/settings", requireAuth, async (req: AuthenticatedRequest, res:
     res.json({ success: true });
   } catch (err) {
     logger.error(err, "Failed to update settings");
-    res.status(500).json({ error: "Failed to update settings" });
+    res.status(500).json({ error: "Не удалось обновить настройки" });
   }
 });
 
@@ -302,7 +333,7 @@ router.put("/auth/public-key", requireAuth, async (req: AuthenticatedRequest, re
   const { publicKey } = req.body as { publicKey?: string };
 
   if (!publicKey || typeof publicKey !== "string") {
-    res.status(400).json({ error: "publicKey is required" });
+    res.status(400).json({ error: "Требуется публичный ключ" });
     return;
   }
 
@@ -315,7 +346,7 @@ router.put("/auth/public-key", requireAuth, async (req: AuthenticatedRequest, re
     res.json({ success: true });
   } catch (err) {
     logger.error(err, "Failed to save public key");
-    res.status(500).json({ error: "Failed to save public key" });
+    res.status(500).json({ error: "Не удалось сохранить публичный ключ" });
   }
 });
 
@@ -329,19 +360,19 @@ router.get("/auth/public-key/:userId", requireAuth, async (req: AuthenticatedReq
       .limit(1);
 
     if (!user) {
-      res.status(404).json({ error: "User not found" });
+      res.status(404).json({ error: "Пользователь не найден" });
       return;
     }
 
     res.json({ publicKey: user.publicKey });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch public key" });
+    res.status(500).json({ error: "Не удалось загрузить публичный ключ" });
   }
 });
 
-async function oauthFindOrCreateUser(provider: string, providerId: string, username: string, displayName: string | null): Promise<{ id: number }> {
+async function oauthFindOrCreateUser(provider: string, providerId: string, username: string, displayName: string | null): Promise<{ id: number; bunkerId?: string }> {
   const [existing] = await db
-    .select({ id: usersTable.id })
+    .select({ id: usersTable.id, bunkerId: usersTable.bunkerId })
     .from(usersTable)
     .where(
       and(
@@ -351,7 +382,12 @@ async function oauthFindOrCreateUser(provider: string, providerId: string, usern
     )
     .limit(1);
 
-  if (existing) return existing;
+  if (existing) {
+    if (!existing.bunkerId) {
+      existing.bunkerId = (await assignBnkrId(existing.id)) ?? null;
+    }
+    return { id: existing.id, bunkerId: existing.bunkerId ?? undefined };
+  }
 
   const safeUsername = username.replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 32);
   const [user] = await db
@@ -364,7 +400,9 @@ async function oauthFindOrCreateUser(provider: string, providerId: string, usern
     })
     .returning({ id: usersTable.id });
 
-  return user;
+  const bunkerId = await assignBnkrId(user.id);
+
+  return { id: user.id, bunkerId };
 }
 
 async function issueTokens(userId: number, req: Request, res: Response) {
@@ -413,7 +451,7 @@ router.get("/auth/vk", (req, res) => {
 router.get("/auth/vk/callback", async (req, res) => {
   const { code, error: vkError } = req.query as { code?: string; error?: string };
   if (vkError || !code) {
-    res.status(400).json({ error: vkError || "Missing code" });
+    res.status(400).json({ error: vkError || "Отсутствует код авторизации" });
     return;
   }
 
@@ -466,7 +504,7 @@ router.get("/auth/yandex", (req, res) => {
 router.get("/auth/yandex/callback", async (req, res) => {
   const { code, error: yaError } = req.query as { code?: string; error?: string };
   if (yaError || !code) {
-    res.status(400).json({ error: yaError || "Missing code" });
+    res.status(400).json({ error: yaError || "Отсутствует код авторизации" });
     return;
   }
 
@@ -516,14 +554,14 @@ router.post("/auth/yandex/callback", async (req, res: Response) => {
   const { code, redirect_uri } = req.body as { code?: string; redirect_uri?: string };
 
   if (!code) {
-    res.status(400).json({ error: "Missing authorization code" });
+    res.status(400).json({ error: "Отсутствует код авторизации" });
     return;
   }
 
   try {
     const env = getEnv();
     if (!env.YANDEX_CLIENT_ID) {
-      res.status(503).json({ error: "Yandex OAuth not configured" });
+      res.status(503).json({ error: "Яндекс OAuth не настроен" });
       return;
     }
 
@@ -542,7 +580,7 @@ router.post("/auth/yandex/callback", async (req, res: Response) => {
     const tokenData = await tokenResp.json() as { access_token?: string; error?: string };
     if (!tokenData.access_token) {
       logger.error(tokenData, "Yandex token exchange failed");
-      res.status(502).json({ error: "Yandex token exchange failed" });
+      res.status(502).json({ error: "Не удалось получить токен Яндекса" });
       return;
     }
 
@@ -551,7 +589,7 @@ router.post("/auth/yandex/callback", async (req, res: Response) => {
     });
     const userData = await userResp.json() as { id?: string; login?: string; display_name?: string; default_email?: string };
     if (!userData.id) {
-      res.status(502).json({ error: "Failed to fetch Yandex profile" });
+      res.status(502).json({ error: "Не удалось загрузить профиль Яндекса" });
       return;
     }
 
@@ -584,6 +622,7 @@ router.post("/auth/yandex/callback", async (req, res: Response) => {
         username: usersTable.username,
         displayName: usersTable.displayName,
         avatarUrl: usersTable.avatarUrl,
+        bunkerId: usersTable.bunkerId,
         publicKey: usersTable.publicKey,
         vpnClientKey: usersTable.vpnClientKey,
         meshEnabled: usersTable.meshEnabled,
@@ -599,7 +638,7 @@ router.post("/auth/yandex/callback", async (req, res: Response) => {
     });
   } catch (err) {
     logger.error(err, "Yandex mobile callback failed");
-    res.status(500).json({ error: "Yandex authentication failed" });
+    res.status(500).json({ error: "Ошибка авторизации через Яндекс" });
   }
 });
 
@@ -608,7 +647,7 @@ router.get("/auth/oauth/:provider", (req, res) => {
   const { provider } = req.params;
   const supportedProviders = ["google", "telegram", "vk", "yandex"];
   if (!supportedProviders.includes(provider)) {
-    res.status(400).json({ error: "Unsupported provider" });
+    res.status(400).json({ error: "Неподдерживаемый провайдер" });
     return;
   }
   res.json({

@@ -12,7 +12,7 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
   const userId = String(req.userId ?? '');
 
   if (getSseClientCount() >= MAX_SSE_CONNECTIONS) {
-    res.status(503).json({ error: "Server busy, too many connections" });
+    res.status(503).json({ error: "Сервер перегружен, слишком много подключений" });
     return;
   }
 
@@ -23,7 +23,7 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
       `current=${currentCount} max=${MAX_SSE_PER_USER}`
     );
     res.status(429).json({
-      error: 'Too many SSE connections',
+      error: 'Слишком много активных соединений',
       current: currentCount,
       max: MAX_SSE_PER_USER,
     });
@@ -61,6 +61,10 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
     res.write(`event: p2p_message\ndata: ${JSON.stringify(data)}\n\n`);
   });
 
+  const unsubContactRequest = subscribe("contact_request", (data) => {
+    res.write(`event: contact_request\ndata: ${JSON.stringify(data)}\n\n`);
+  });
+
   const keepAlive = setInterval(() => {
     try {
       res.write(":keepalive\n\n");
@@ -75,6 +79,7 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
     unsubTyping();
     unsubConversation();
     unsubP2p();
+    unsubContactRequest();
     clearInterval(keepAlive);
     removeSseClient(clientId);
   };

@@ -81,6 +81,33 @@ services:
       timeout: 10s
       retries: 3
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: bunker-app-n8n-1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5678:5678"
+    volumes:
+      - n8n_data:/home/node/.local/share/n8n
+    environment:
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_HOST=176.12.72.246.nip.io
+      - N8N_PROTOCOL=https
+      - N8N_PORT=5678
+      - N8N_PATH=/n8n/
+    depends_on:
+      db:
+        condition: service_healthy
+
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    expose:
+      - 8080
+    depends_on:
+      db:
+        condition: service_healthy
+
   frontend:
     build:
       context: .
@@ -93,9 +120,11 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /root/bunker-app/letsencrypt-webroot/.well-known/acme-challenge:/usr/share/nginx/html/.well-known/acme-challenge
       - /root/bunker-app/nginx.conf:/etc/nginx/conf.d/default.conf
+      - /root/bunker-app/.adminer_passwd:/etc/nginx/.adminer_passwd:ro
     depends_on:
       - api
     restart: unless-stopped
 
 volumes:
   pgdata:
+  n8n_data:

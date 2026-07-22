@@ -27,7 +27,7 @@ export function requireAuth(
   }
 
   if (!token) {
-    throw new AppError(401, "Authentication required");
+    throw new AppError(401, "Требуется авторизация");
   }
 
   try {
@@ -36,7 +36,7 @@ export function requireAuth(
     req.sessionId = payload.sessionId;
     next();
   } catch {
-    throw new AppError(401, "Invalid or expired token");
+    throw new AppError(401, "Недействительный или истёкший токен");
   }
 }
 
@@ -85,7 +85,7 @@ export function verifyRefreshToken(token: string): JwtPayload {
   const env = getEnv();
   const payload = jwt.verify(token, env.JWT_SECRET) as JwtPayload & { type?: string };
   if (payload.type !== "refresh") {
-    throw new AppError(401, "Invalid refresh token");
+    throw new AppError(401, "Недействительный токен обновления");
   }
   return { sub: payload.sub, sessionId: payload.sessionId };
 }

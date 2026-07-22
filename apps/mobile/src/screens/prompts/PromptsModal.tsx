@@ -25,6 +25,7 @@ export default function PromptsModal({ visible, onClose }: Props) {
   const [currentUsername, setCurrentUsername] = useState('');
   const [editingPrompt, setEditingPrompt] = useState<PromptTemplate | 'create' | null>(null);
   const [editForm, setEditForm] = useState({ title: '', prompt: '', description: '', icon: '', category: '' });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const isAdmin = currentUsername.toLowerCase() === 'timgood';
 
@@ -211,7 +212,17 @@ export default function PromptsModal({ visible, onClose }: Props) {
                     </View>
                   </View>
                 </View>
-                <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+                <Text
+                  style={styles.cardDesc}
+                  numberOfLines={expandedId === item.id ? 0 : 2}
+                  onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                  onLongPress={() => {
+                    Clipboard.setStringAsync(item.prompt);
+                    Alert.alert('✅ Скопировано', 'Текст промпта в буфере');
+                  }}
+                >
+                  {item.description}
+                </Text>
 
                 {isAdmin ? (
                   <View style={styles.adminActions}>
@@ -240,12 +251,20 @@ export default function PromptsModal({ visible, onClose }: Props) {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <TouchableOpacity
-                    onPress={() => handleCopy(item.prompt)}
-                    style={styles.copyBtn}
-                  >
-                    <Text style={[styles.copyBtnText, { color: accent }]}>📋 Скопировать</Text>
-                  </TouchableOpacity>
+                  <View style={styles.adminActions}>
+                    <TouchableOpacity
+                      onPress={() => setSelectedPrompt(item)}
+                      style={styles.viewBtn}
+                    >
+                      <Text style={styles.viewBtnText}>👁 Просмотр</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleCopy(item.prompt)}
+                      style={styles.editBtn}
+                    >
+                      <Text style={[styles.actionBtnText, { color: accent }]}>📋 Копировать</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             )}
@@ -282,7 +301,12 @@ export default function PromptsModal({ visible, onClose }: Props) {
                 </Text>
               </View>
 
-              <ScrollView style={{ maxHeight: 200 }}>
+              <ScrollView style={{ maxHeight: 300 }}>
+                {selectedPrompt.description ? (
+                  <Text style={{ color: '#8080a0', fontSize: 13, lineHeight: 18, marginBottom: 12 }}>
+                    {selectedPrompt.description}
+                  </Text>
+                ) : null}
                 <Text style={{ color: '#c0c0e0', fontSize: 14, lineHeight: 22 }}>
                   {selectedPrompt.prompt}
                 </Text>

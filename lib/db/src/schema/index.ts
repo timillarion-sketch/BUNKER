@@ -11,4 +11,5 @@ export * from "./prompts";
 export * from "./videos";
 export * from "./video-interactions";
 export * from "./p2p-messages";
+export * from "./p2p-deletions";
 export * from "./content";

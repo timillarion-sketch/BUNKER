@@ -1,4 +1,4 @@
-import { api, getUserId, storage, formatBnkrId } from "@/core";
+import { api } from "@/core";
 import { SseConnection } from "./sseClient";
 
 export interface P2pServerMessage {
@@ -8,10 +8,19 @@ export interface P2pServerMessage {
   content: string;
   status: "sent" | "delivered" | "read";
   createdAt: string;
+  contactPending?: boolean;
+  contactId?: number;
 }
 
 export interface P2pHistoryResponse {
   messages: P2pServerMessage[];
+  hasMore?: boolean;
+}
+
+export interface ContactStatus {
+  id: number;
+  status: "pending" | "accepted" | "blocked";
+  isRequester: boolean;
 }
 
 let bnkrIdCache: string | null = null;
@@ -23,16 +32,7 @@ export function getCachedBnkrId(): string | null {
 export async function ensureBnkrId(): Promise<string> {
   if (bnkrIdCache) return bnkrIdCache;
 
-  const uuid = await getUserId(storage);
-  const bunkerId = formatBnkrId(uuid);
-
-  try {
-    await api.post<{ bunkerId: string }>("/api/p2p/register-bunker", { bunkerId });
-  } catch (err: unknown) {
-    const apiErr = err as { status?: number };
-    if (apiErr.status !== 409) throw err;
-  }
-
+  const { bunkerId } = await api.get<{ bunkerId: string }>("/api/p2p/my-id");
   bnkrIdCache = bunkerId;
   return bunkerId;
 }
@@ -48,14 +48,15 @@ export async function fetchP2pHistory(
   peerId: string,
   before?: string,
   limit = 50,
-): Promise<P2pServerMessage[]> {
+  signal?: AbortSignal,
+): Promise<{ messages: P2pServerMessage[]; hasMore?: boolean }> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (before) params.set("before", before);
 
-  const res = await api.get<P2pHistoryResponse>(
+  return api.get<P2pHistoryResponse>(
     `/api/p2p/history/${peerId}?${params.toString()}`,
+    signal ? { signal } : undefined,
   );
-  return res.messages;
 }
 
 const sseConnection = new SseConnection();
@@ -77,4 +78,20 @@ export function disconnectSse(): void {
 
 export function onP2pMessage(handler: (data: string | null) => void): () => void {
   return sseConnection.on("p2p_message", handler);
+}
+
+export function onContactRequest(handler: (data: string | null) => void): () => void {
+  return sseConnection.on("contact_request", handler);
+}
+
+export async function fetchContactStatus(peerId: string): Promise<{ contact: ContactStatus | null }> {
+  return api.get<{ contact: ContactStatus | null }>(`/api/p2p/contact-status/${peerId}`);
+}
+
+export async function deleteChat(peerId: string, mode: "self" | "both"): Promise<void> {
+  await api.delete(`/api/p2p/history/${peerId}?mode=${mode}`);
+}
+
+export function onChatDeleted(handler: (data: string | null) => void): () => void {
+  return sseConnection.on("chat_deleted", handler);
 }

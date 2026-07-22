@@ -19,6 +19,7 @@ ENV NODE_ENV=production
 RUN mkdir -p /app/artifacts/api-server
 COPY --from=builder /app/artifacts/api-server/dist /app/artifacts/api-server/dist
 COPY --from=builder /app/artifacts/api-server/package.json /app/artifacts/api-server/
+COPY --from=builder /app/artifacts/api-server/data /app/artifacts/api-server/data
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 COPY lib/ lib/
 COPY shared/ shared/
@@ -37,6 +38,7 @@ ENV NODE_ENV=development
 RUN mkdir -p /app/artifacts/api-server
 COPY --from=builder /app/artifacts/api-server/dist /app/artifacts/api-server/dist
 COPY --from=builder /app/artifacts/api-server/package.json /app/artifacts/api-server/
+COPY --from=builder /app/artifacts/api-server/data /app/artifacts/api-server/data
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json tsconfig.json ./
 COPY lib/ lib/
 COPY shared/ shared/

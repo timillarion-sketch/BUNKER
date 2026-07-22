@@ -24,7 +24,7 @@ export { CryptoService } from "./crypto";
 export { WebStorage, ExpoSecureStorage } from "./storage";
 export type { IStorage } from "./storage";
 export { getUserId } from "./constants";
-export { formatBnkrId, isValidBnkrId } from "./bnkr";
+export { isValidBnkrId } from "./bnkr";
 
 export const setToken = (token: string) => api.setToken(token);
 export const getToken = () => api.getToken();

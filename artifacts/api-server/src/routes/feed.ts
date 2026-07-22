@@ -43,7 +43,7 @@ router.get("/feed", requireAuth, async (req: AuthenticatedRequest, res: Response
     });
   } catch (err) {
     console.error("[feed] error:", err);
-    return res.status(500).json({ error: "Failed to fetch feed" });
+    return res.status(500).json({ error: "Не удалось загрузить ленту" });
   }
 });
 

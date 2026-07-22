@@ -1,0 +1,52 @@
+[
+  {
+    "externalId": "vid-001",
+    "title": "Как работает нейросеть",
+    "category": "video",
+    "description": "Обзор работы нейросетей для начинающих",
+    "promptText": "Создай видео о том, как работают нейросети",
+    "tags": ["нейросети", "образование"],
+    "language": "ru",
+    "isPremium": false
+  },
+  {
+    "externalId": "photo-001",
+    "title": "Горный пейзаж",
+    "category": "photo",
+    "description": "Красивый горный пейзаж в высоком разрешении",
+    "promptText": "Сгенерируй изображение горного пейзажа",
+    "tags": ["природа", "горы"],
+    "language": "ru",
+    "isPremium": true
+  },
+  {
+    "externalId": "biz-001",
+    "title": "Бизнес-план стартапа",
+    "category": "business",
+    "description": "Шаблон бизнес-плана для IT-стартапа",
+    "promptText": "Составь бизнес-план для IT стартапа",
+    "tags": ["бизнес", "стартап"],
+    "language": "en",
+    "isPremium": true
+  },
+  {
+    "externalId": "vid-002",
+    "title": "Deep Dive: PostgreSQL",
+    "category": "video",
+    "description": "Advanced PostgreSQL optimization techniques",
+    "promptText": "Create a deep dive video about PostgreSQL optimization",
+    "tags": ["postgresql", "database", "advanced"],
+    "language": "en",
+    "isPremium": true
+  },
+  {
+    "externalId": "photo-002",
+    "title": "Городская архитектура",
+    "category": "photo",
+    "description": "Современная городская архитектура",
+    "promptText": "Сгенерируй изображение современного города",
+    "tags": ["архитектура", "город"],
+    "language": "ru",
+    "isPremium": false
+  }
+]

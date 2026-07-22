@@ -28,5 +28,5 @@ export function errorHandler(
   }
 
   logger.error({ err }, "unhandled error");
-  res.status(500).json({ error: "Internal server error" });
+  res.status(500).json({ error: "Внутренняя ошибка сервера" });
 }

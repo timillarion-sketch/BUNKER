@@ -93,8 +93,8 @@ export class ApiClient {
     return res.json();
   }
 
-  get<T>(path: string): Promise<T> {
-    return this.request<T>(path);
+  get<T>(path: string, options?: RequestInit): Promise<T> {
+    return this.request<T>(path, options);
   }
 
   post<T>(path: string, body?: unknown): Promise<T> {
@@ -103,6 +103,10 @@ export class ApiClient {
 
   put<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>(path, { method: "PUT", body: JSON.stringify(body) });
+  }
+
+  patch<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
   }
 
   delete<T>(path: string): Promise<T> {

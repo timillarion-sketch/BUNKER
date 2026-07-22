@@ -3,19 +3,21 @@ import React, {
 } from 'react';
 import {
   View, Text, FlatList, TextInput,
-  TouchableOpacity, StyleSheet,
+  TouchableOpacity, StyleSheet, Alert,
   KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useAccent } from '../core/AccentContext';
-import { storage, formatBnkrId, getUserId } from '@/core';
+import { api } from '@/core';
 import {
   ensureBnkrId,
   sendP2pMessage,
   fetchP2pHistory,
   onP2pMessage,
+  fetchContactStatus,
   type P2pServerMessage,
+  type ContactStatus,
 } from '../services/p2pService';
 
 interface P2PMessage {
@@ -30,10 +32,13 @@ interface P2PMessage {
 export default function UserChatScreen({
   route, navigation
 }: any) {
-  const { peerId, roomId, mode } = route.params as {
+  const { peerId, peerName, roomId, mode, contactId: navContactId, contactStatus: navContactStatus } = route.params as {
     peerId: string;
+    peerName?: string;
     roomId: string;
     mode?: 'hidden' | 'incognito';
+    contactId?: number;
+    contactStatus?: 'accepted' | 'pending';
   };
   const insets = useSafeAreaInsets();
   const { accent } = useAccent();
@@ -42,6 +47,13 @@ export default function UserChatScreen({
   const [myId, setMyId] = useState('');
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [sending, setSending] = useState(false);
+  const [contactStatus, setContactStatus] = useState<ContactStatus | null>(() => {
+    if (navContactStatus && typeof navContactId === 'number') {
+      return { id: navContactId, status: navContactStatus, isRequester: navContactStatus === 'pending' ? false : false };
+    }
+    return null;
+  });
+  const [contactActionLoading, setContactActionLoading] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -53,17 +65,15 @@ export default function UserChatScreen({
   const isIncognito = mode === 'incognito';
 
   useEffect(() => {
+    const controller = new AbortController();
+
     (async () => {
-      try {
-        const id = await ensureBnkrId();
-        setMyId(id);
-      } catch {
-        const uuid = await getUserId(storage);
-        setMyId(formatBnkrId(uuid));
-      }
+      const id = await ensureBnkrId();
+      setMyId(id);
 
       try {
-        const history = await fetchP2pHistory(peerId);
+        const { messages: history } = await fetchP2pHistory(peerId, undefined, 50, controller.signal);
+        if (controller.signal.aborted) return;
         setMessages(
           history.map((m: P2pServerMessage) => ({
             id: m.id,
@@ -74,16 +84,29 @@ export default function UserChatScreen({
             isOptimistic: false,
           })),
         );
-      } catch {
-        // History fetch failed — start empty
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
+
+      if (!navContactId) {
+        try {
+          const { contact } = await fetchContactStatus(peerId);
+          if (contact) {
+            setContactStatus(contact);
+          }
+        } catch {
+          // non-critical
+        }
       }
     })();
 
     navigation.setOptions({
-      title: peerId,
+      title: peerName || peerId,
       headerStyle: { backgroundColor: '#0a0a0f' },
       headerTintColor: accent,
     });
+
+    return () => controller.abort();
   }, [peerId]);
 
   // Incognito auto-delete: remove messages older than 10 minutes
@@ -146,6 +169,11 @@ export default function UserChatScreen({
 
     try {
       const serverMsg = await sendP2pMessage(peerId, text);
+
+      if (serverMsg.contactPending) {
+        setContactStatus({ id: serverMsg.contactId!, status: "pending", isRequester: true });
+      }
+
       setMessages(prev =>
         prev.map(m =>
           m.id === optimistic.id
@@ -160,7 +188,7 @@ export default function UserChatScreen({
             : m,
         ),
       );
-    } catch {
+    } catch (err: unknown) {
       setMessages(prev =>
         prev.map(m =>
           m.id === optimistic.id ? { ...m, status: 'error' as const } : m,
@@ -170,6 +198,33 @@ export default function UserChatScreen({
       setSending(false);
     }
   }, [input, myId, sending, peerId]);
+
+  const handleAcceptContact = async () => {
+    if (!contactStatus || contactActionLoading) return;
+    setContactActionLoading(true);
+    try {
+      await api.patch(`/api/contacts/${contactStatus.id}`, { status: "accepted" });
+      setContactStatus({ ...contactStatus, status: "accepted" });
+    } catch {
+      Alert.alert("Ошибка", "Не удалось добавить в контакты");
+    } finally {
+      setContactActionLoading(false);
+    }
+  };
+
+  const handleBlockContact = async () => {
+    if (!contactStatus || contactActionLoading) return;
+    setContactActionLoading(true);
+    try {
+      await api.patch(`/api/contacts/${contactStatus.id}`, { status: "blocked" });
+      setContactStatus({ ...contactStatus, status: "blocked" });
+      Alert.alert("Заблокирован", "Пользователь больше не сможет вам писать");
+    } catch {
+      Alert.alert("Ошибка", "Не удалось заблокировать");
+    } finally {
+      setContactActionLoading(false);
+    }
+  };
 
   const renderMessage = ({ item }: { item: P2PMessage }) => {
     const isMe = item.senderId === myId;
@@ -210,12 +265,42 @@ export default function UserChatScreen({
           <Text style={[styles.peerLabel, { color: accent }]}>
             {isIncognito ? '💀 ИНКОГНИТО' : '🔒 СКРЫТЫЙ'}
           </Text>
-          <Text style={styles.peerId}>{peerId}</Text>
+          {peerName ? (
+            <>
+              <Text style={styles.peerName}>{peerName}</Text>
+              <Text style={styles.peerId}>{peerId}</Text>
+            </>
+          ) : (
+            <Text style={styles.peerId}>{peerId}</Text>
+          )}
         </View>
         <View style={styles.e2eTag}>
           <Text style={styles.e2eText}>🔒 E2E</Text>
         </View>
       </View>
+
+      {contactStatus && contactStatus.status === "pending" && !contactStatus.isRequester ? (
+        <View style={styles.contactBanner}>
+          <Text style={styles.contactBannerTitle}>⚠️ Незнакомый пользователь</Text>
+          <Text style={styles.contactBannerSub}>Добавить в контакты или заблокировать?</Text>
+          <View style={styles.contactBannerActions}>
+            <TouchableOpacity
+              onPress={handleAcceptContact}
+              disabled={contactActionLoading}
+              style={[styles.contactAcceptBtn, { backgroundColor: accent }]}
+            >
+              <Text style={styles.contactAcceptText}>✅ Добавить</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleBlockContact}
+              disabled={contactActionLoading}
+              style={styles.contactBlockBtn}
+            >
+              <Text style={styles.contactBlockText}>🚫 Заблокировать</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
 
       {messages.length === 0 ? (
         <View style={styles.emptyState}>
@@ -231,9 +316,33 @@ export default function UserChatScreen({
         <FlatList
           ref={listRef}
           data={messages}
-          keyExtractor={m => m.id}
+          keyExtractor={m => String(m.id)}
           renderItem={renderMessage}
           contentContainerStyle={styles.msgList}
+          ListHeaderComponent={
+            contactStatus && contactStatus.status === "pending" && !contactStatus.isRequester ? (
+              <View style={styles.contactBanner}>
+                <Text style={styles.contactBannerTitle}>⚠️ Незнакомый пользователь</Text>
+                <Text style={styles.contactBannerSub}>Добавить в контакты или заблокировать?</Text>
+                <View style={styles.contactBannerActions}>
+                  <TouchableOpacity
+                    onPress={handleAcceptContact}
+                    disabled={contactActionLoading}
+                    style={[styles.contactAcceptBtn, { backgroundColor: accent }]}
+                  >
+                    <Text style={styles.contactAcceptText}>✅ Добавить</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleBlockContact}
+                    disabled={contactActionLoading}
+                    style={styles.contactBlockBtn}
+                  >
+                    <Text style={styles.contactBlockText}>🚫 Заблокировать</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null
+          }
           onContentSizeChange={() => listRef.current?.scrollToEnd()}
         />
       )}
@@ -271,7 +380,8 @@ const styles = StyleSheet.create({
   },
   peerBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   peerLabel: { fontSize: 9, letterSpacing: 3, fontWeight: '700' },
-  peerId: { color: '#e0e0ff', fontSize: 13, fontFamily: 'monospace', fontWeight: '600', letterSpacing: 1, marginTop: 2 },
+  peerName: { color: '#e0e0ff', fontSize: 15, fontWeight: '600', letterSpacing: 0.5, marginTop: 3 },
+  peerId: { color: '#e0e0ff', fontSize: 13, fontFamily: 'monospace', fontWeight: '600', letterSpacing: 1, marginTop: 1 },
   e2eTag: { backgroundColor: '#0a2a1a', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
   e2eText: { color: '#00ff88', fontSize: 11, fontWeight: '600' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
@@ -298,4 +408,21 @@ const styles = StyleSheet.create({
   },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   sendIcon: { fontSize: 18, marginLeft: 2 },
+  contactBanner: {
+    backgroundColor: 'rgba(255,180,0,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,180,0,0.2)',
+    borderRadius: 12,
+    marginHorizontal: 12,
+    marginTop: 8,
+    padding: 12,
+    gap: 6,
+  },
+  contactBannerTitle: { color: '#ffb400', fontSize: 13, fontWeight: '700' },
+  contactBannerSub: { color: '#8080a0', fontSize: 12 },
+  contactBannerActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  contactAcceptBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
+  contactAcceptText: { color: '#000', fontSize: 12, fontWeight: '700' },
+  contactBlockBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,50,50,0.15)', borderWidth: 1, borderColor: 'rgba(255,50,50,0.3)' },
+  contactBlockText: { color: '#ff3344', fontSize: 12, fontWeight: '700' },
 });

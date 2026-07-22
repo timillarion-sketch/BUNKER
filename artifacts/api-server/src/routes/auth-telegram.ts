@@ -131,11 +131,11 @@ router.post("/api/auth/telegram", async (req: Request, res: Response) => {
     const body = req.body as TelegramAuthData;
 
     if (!body.id || !body.hash) {
-      return res.status(400).json({ error: "id and hash are required" });
+      return res.status(400).json({ error: "Требуются id и hash" });
     }
 
     if (!verifyTelegramAuth(body)) {
-      return res.status(403).json({ error: "Invalid signature" });
+      return res.status(403).json({ error: "Недействительная подпись" });
     }
 
     const displayName = [body.first_name, body.last_name]
@@ -173,7 +173,7 @@ router.post("/api/auth/telegram", async (req: Request, res: Response) => {
     return res.json(tokens);
   } catch (err) {
     console.error("[telegram-post] error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Внутренняя ошибка. Попробуйте ещё раз." });
   }
 });
 

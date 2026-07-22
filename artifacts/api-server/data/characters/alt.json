@@ -1,0 +1,7 @@
+{
+  "id": "alt",
+  "name": "Альтушка",
+  "prompt_file": "alt.md",
+  "model_tier": "fast",
+  "knowledge_tags": ["relationships"]
+}

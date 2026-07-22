@@ -1,31 +1,17 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import crypto from "crypto";
-import { z } from "zod";
-import { db, contentItemsTable } from "@workspace/db";
+import { db, contentItemsTable, contentSyncSchema } from "@workspace/db";
 import { eq, desc, and, arrayOverlaps, sql } from "drizzle-orm";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 import { getEnv } from "../lib/env";
 
 const router: IRouter = Router();
 
-const syncSchema = z.array(
-  z.object({
-    externalId: z.string().min(1),
-    title: z.string().min(1),
-    category: z.enum(["video", "photo", "business"]),
-    description: z.string().min(1),
-    promptText: z.string().min(1),
-    tags: z.array(z.string()).optional(),
-    language: z.string().optional(),
-    isPremium: z.boolean().optional(),
-  }),
-);
-
 function requireSyncKey(req: Request, res: Response, next: NextFunction) {
   const key = req.headers["x-api-key"];
   if (!key || typeof key !== "string") {
-    return res.status(401).json({ error: "Missing X-Api-Key header" });
+    return res.status(401).json({ error: "Отсутствует заголовок X-Api-Key" });
   }
   const env = getEnv();
   try {
@@ -35,10 +21,10 @@ function requireSyncKey(req: Request, res: Response, next: NextFunction) {
       actual.length !== expected.length ||
       !crypto.timingSafeEqual(actual, expected)
     ) {
-      return res.status(401).json({ error: "Invalid API key" });
+      return res.status(401).json({ error: "Недействительный API-ключ" });
     }
   } catch {
-    return res.status(401).json({ error: "Invalid API key" });
+    return res.status(401).json({ error: "Недействительный API-ключ" });
   }
   next();
 }
@@ -73,7 +59,7 @@ router.get("/content", requireAuth, async (req: AuthenticatedRequest, res: Respo
     return res.json(items);
   } catch (err) {
     console.error("[content] error:", err);
-    return res.status(500).json({ error: "Failed to fetch content" });
+    return res.status(500).json({ error: "Не удалось загрузить контент" });
   }
 });
 
@@ -83,9 +69,9 @@ router.post(
   requireSyncKey,
   async (req: Request, res: Response) => {
     try {
-      const result = syncSchema.safeParse(req.body);
+      const result = contentSyncSchema.safeParse(req.body);
       if (!result.success) {
-        return res.status(400).json({ error: "Invalid request body", details: result.error.flatten() });
+        return res.status(400).json({ error: "Некорректное тело запроса", details: result.error.flatten() });
       }
 
       const items = result.data;
@@ -124,7 +110,7 @@ router.post(
       return res.json({ synced: items.length });
     } catch (err) {
       console.error("[content/sync] error:", err);
-      return res.status(500).json({ error: "Sync failed" });
+      return res.status(500).json({ error: "Ошибка синхронизации" });
     }
   },
 );

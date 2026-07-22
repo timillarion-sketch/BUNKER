@@ -20,7 +20,7 @@ router.post("/interaction", requireAuth, async (req: AuthenticatedRequest, res: 
     const body = req.body as InteractionBody;
 
     if (!body.videoId || typeof body.videoId !== "number") {
-      return res.status(400).json({ error: "videoId is required and must be a number" });
+      return res.status(400).json({ error: "Требуется videoId (числовое значение)" });
     }
 
     const [existing] = await db
@@ -108,7 +108,7 @@ router.post("/interaction", requireAuth, async (req: AuthenticatedRequest, res: 
     return res.json({ ok: true });
   } catch (err) {
     console.error("[interaction] error:", err);
-    return res.status(500).json({ error: "Failed to save interaction" });
+    return res.status(500).json({ error: "Не удалось сохранить действие" });
   }
 });
 

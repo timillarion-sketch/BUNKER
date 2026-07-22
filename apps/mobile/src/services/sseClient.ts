@@ -1,10 +1,11 @@
 import EventSource from "react-native-sse";
 import { API_URL } from "@/core";
 
+type SseEventName = "p2p_message" | "contact_request" | "chat_deleted";
 type SseEventHandler = (data: string | null) => void;
 
 export class SseConnection {
-  private eventSource: EventSource<"p2p_message"> | null = null;
+  private eventSource: EventSource<SseEventName> | null = null;
   private listeners = new Map<string, Set<SseEventHandler>>();
   private _connected = false;
   private _connecting = false;
@@ -17,7 +18,7 @@ export class SseConnection {
     if (this._connecting || this._connected) return;
     this._connecting = true;
 
-    this.eventSource = new EventSource<"p2p_message">(
+    this.eventSource = new EventSource<SseEventName>(
       `${API_URL}/api/events`,
       {
         headers: {
@@ -34,6 +35,20 @@ export class SseConnection {
 
     this.eventSource.addEventListener("p2p_message", (event) => {
       const handlers = this.listeners.get("p2p_message");
+      if (handlers) {
+        handlers.forEach((h) => h(event.data));
+      }
+    });
+
+    this.eventSource.addEventListener("contact_request", (event) => {
+      const handlers = this.listeners.get("contact_request");
+      if (handlers) {
+        handlers.forEach((h) => h(event.data));
+      }
+    });
+
+    this.eventSource.addEventListener("chat_deleted", (event) => {
+      const handlers = this.listeners.get("chat_deleted");
       if (handlers) {
         handlers.forEach((h) => h(event.data));
       }
@@ -59,7 +74,7 @@ export class SseConnection {
     }
   }
 
-  on(event: "p2p_message", handler: SseEventHandler): () => void {
+  on(event: SseEventName, handler: SseEventHandler): () => void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }

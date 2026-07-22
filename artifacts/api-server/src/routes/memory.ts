@@ -25,7 +25,7 @@ router.get("/memory/settings", requireAuth, async (req: AuthenticatedRequest, re
 
     res.json(settings);
   } catch {
-    res.status(500).json({ error: "Failed to get memory settings" });
+    res.status(500).json({ error: "Не удалось загрузить настройки памяти" });
   }
 });
 
@@ -72,7 +72,7 @@ router.patch("/memory/settings", requireAuth, async (req: AuthenticatedRequest, 
 
     res.json(settings);
   } catch {
-    res.status(500).json({ error: "Failed to update memory settings" });
+    res.status(500).json({ error: "Не удалось обновить настройки памяти" });
   }
 });
 
@@ -100,7 +100,7 @@ router.get("/memory/facts", requireAuth, async (req: AuthenticatedRequest, res: 
 
     res.json({ facts });
   } catch {
-    res.status(500).json({ error: "Failed to fetch memory facts" });
+    res.status(500).json({ error: "Не удалось загрузить факты памяти" });
   }
 });
 
@@ -113,22 +113,22 @@ router.post("/memory/facts", requireAuth, async (req: AuthenticatedRequest, res:
   };
 
   if (!fact || typeof fact !== "string" || fact.length === 0) {
-    res.status(400).json({ error: "fact is required" });
+    res.status(400).json({ error: "Требуется факт" });
     return;
   }
 
   if (fact.length > 5000) {
-    res.status(400).json({ error: "Fact too long" });
+    res.status(400).json({ error: "Слишком длинный факт (максимум 5000 символов)" });
     return;
   }
 
   if (scope !== "personal" && scope !== "global") {
-    res.status(400).json({ error: "scope must be 'personal' or 'global'" });
+    res.status(400).json({ error: "Значение scope должно быть 'personal' или 'global'" });
     return;
   }
 
   if (scope === "personal" && (!characterId || typeof characterId !== "string")) {
-    res.status(400).json({ error: "characterId is required for personal scope" });
+    res.status(400).json({ error: "Требуется characterId для области personal" });
     return;
   }
 
@@ -145,7 +145,7 @@ router.post("/memory/facts", requireAuth, async (req: AuthenticatedRequest, res:
 
     res.status(201).json(entry);
   } catch {
-    res.status(500).json({ error: "Failed to save memory fact" });
+    res.status(500).json({ error: "Не удалось сохранить факт памяти" });
   }
 });
 
@@ -154,7 +154,7 @@ router.delete("/memory/facts/:id", requireAuth, async (req: AuthenticatedRequest
   const factId = Number(req.params.id);
 
   if (Number.isNaN(factId)) {
-    res.status(400).json({ error: "Invalid fact id" });
+    res.status(400).json({ error: "Недействительный ID факта" });
     return;
   }
 
@@ -171,7 +171,7 @@ router.delete("/memory/facts/:id", requireAuth, async (req: AuthenticatedRequest
       .limit(1);
 
     if (!existing) {
-      res.status(404).json({ error: "Fact not found" });
+      res.status(404).json({ error: "Факт не найден" });
       return;
     }
 
@@ -181,7 +181,7 @@ router.delete("/memory/facts/:id", requireAuth, async (req: AuthenticatedRequest
 
     res.json({ success: true });
   } catch {
-    res.status(500).json({ error: "Failed to delete memory fact" });
+    res.status(500).json({ error: "Не удалось удалить факт памяти" });
   }
 });
 

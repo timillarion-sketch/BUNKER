@@ -1,10 +1,20 @@
 import { logger } from "./logger";
 
+export class AiQueueError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+    this.name = "AiQueueError";
+  }
+}
+
 interface QueueTask {
   id: string;
   userId: number;
   characterId: string;
   message: string;
+  systemPrompt?: string;
   execute: () => Promise<string>;
 }
 
@@ -28,7 +38,7 @@ class AIQueue {
 
   async enqueue(task: Omit<QueueTask, "execute">): Promise<string> {
     if (this.queue.length >= this.maxSize) {
-      throw new Error("AI queue is full. Try again later.");
+      throw new AiQueueError("QUEUE_FULL", "Очередь ИИ переполнена. Попробуйте позже.");
     }
 
     return new Promise((resolve, reject) => {

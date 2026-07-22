@@ -8,7 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent, ACCENT_PRESETS, AccentKey } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import ColorPickerModal from '../components/ColorPickerModal';
-import { api, clearTokens, getUserId, storage } from '../core';
+import { api, clearTokens, storage } from '../core';
+import { ensureBnkrId } from '../services/p2pService';
 import * as Clipboard from 'expo-clipboard';
 import { VpnService } from '../services/VpnService';
 import { parseProxyUri } from '../utils/configParser';
@@ -109,9 +110,8 @@ export default function ProfileScreen({ navigation }: Props) {
   }, [vpnStatus, pulse, stopPulse, vpn]);
 
   useEffect(() => {
-    getUserId(storage).then(id => {
-      const short = id.slice(0, 8).toUpperCase();
-      setUserId(`BNKR-${short.slice(0,4)}-${short.slice(4,8)}`);
+    ensureBnkrId().then(id => {
+      setUserId(id);
     }).catch(() => {});
   }, []);
 

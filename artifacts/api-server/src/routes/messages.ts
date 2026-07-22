@@ -43,7 +43,7 @@ router.get("/messages/:characterId", requireAuth, async (req: AuthenticatedReque
 
     res.json({ messages: messages.reverse(), total: Number(count) });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch messages" });
+    res.status(500).json({ error: "Не удалось загрузить сообщения" });
   }
 });
 
@@ -53,12 +53,12 @@ router.post("/messages/:characterId", requireAuth, async (req: AuthenticatedRequ
   const { content, encrypted } = req.body as { content?: string; encrypted?: boolean };
 
   if (!content || typeof content !== "string") {
-    res.status(400).json({ error: "content is required" });
+    res.status(400).json({ error: "Требуется содержимое сообщения" });
     return;
   }
 
   if (content.length > 50000) {
-    res.status(400).json({ error: "Message too long" });
+    res.status(400).json({ error: "Слишком длинное сообщение (максимум 50000 символов)" });
     return;
   }
 
@@ -98,7 +98,7 @@ router.post("/messages/:characterId", requireAuth, async (req: AuthenticatedRequ
 
     res.json({ userMessage: userMsg[0] });
   } catch (err) {
-    res.status(500).json({ error: "Failed to save message" });
+    res.status(500).json({ error: "Не удалось сохранить сообщение" });
   }
 });
 
@@ -123,9 +123,9 @@ router.delete("/messages/:characterId", requireAuth, async (req: AuthenticatedRe
       await db.delete(conversationsTable).where(eq(conversationsTable.id, conv.id));
     }
 
-    res.json({ success: true, message: "History burned. No traces remain." });
+    res.json({ success: true, message: "История уничтожена. Следов не осталось." });
   } catch (err) {
-    res.status(500).json({ error: "Failed to delete messages" });
+    res.status(500).json({ error: "Не удалось удалить сообщения" });
   }
 });
 

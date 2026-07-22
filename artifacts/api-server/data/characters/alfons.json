@@ -1,0 +1,7 @@
+{
+  "id": "alfons",
+  "name": "Альфонс",
+  "prompt_file": "alfons.md",
+  "model_tier": "fast",
+  "knowledge_tags": ["relationships", "psychology"]
+}

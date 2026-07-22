@@ -1,8 +1,6 @@
-import { storage, API_URL } from '@/core';
-import { getUserId } from '@/core/constants';
-import { fetchWithRetry } from '@/core/network';
+import { api } from '@/core';
 
-const TIMEOUT_MS = 60000;
+const TIMEOUT_MS = 95000;
 const CONTEXT_WINDOW = 20;
 
 const FALLBACK_REPLY = '[Персонаж временно недоступен. Попробуйте позже.]';
@@ -36,57 +34,22 @@ export async function sendMessage(
     contextMessages.push(...sliced);
     contextMessages.push({ role: 'user', content: userText });
 
-    const [userId, token] = await Promise.all([
-      getUserId(storage),
-      storage.get('bunker_access_token'),
-    ]);
-
-    console.log('[DEBUG_AI] token present:', !!token);
-    console.log('[DEBUG_AI] characterId:', characterId);
-    console.log('[DEBUG_AI] userId:', userId);
-    console.log('[DEBUG_AI] message count:', contextMessages.length);
-    if (contextMessages.length > 0) {
-      console.log('[DEBUG_AI] last message role:', contextMessages[contextMessages.length - 1].role);
-    }
-
-    console.log('[DEBUG_AI] URL:', `${API_URL}/api/ai/chat`);
-    console.log('[DEBUG_AI] systemPrompt:', systemPrompt);
-    console.log('[DEBUG_AI] userMessage:', userText);
-
-    const response = await fetchWithRetry(`${API_URL}/api/ai/chat`, {
+    const data = await api.request<{ reply: string } | { reply: string }[]>('/api/ai/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
       body: JSON.stringify({
         characterId,
-        userId,
         messages: contextMessages,
       }),
       signal: controller.signal,
-    }, 0);
+    });
 
     clearTimeout(timeoutId);
 
-    console.log('[DEBUG_AI] response status:', response.status);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('[DEBUG_AI] HTTP error:', response.status, errorBody);
-      return FALLBACK_REPLY;
-    }
-
-    const data = await response.json();
     if (Array.isArray(data) && data.length > 0 && data[0]?.reply) {
-      const reply = data[0].reply;
-      console.log('[DEBUG_AI] response ok, reply length:', reply.length);
-      return reply;
+      return data[0].reply;
     }
     if (data?.reply) {
-      const reply = data.reply;
-      console.log('[DEBUG_AI] response ok, reply length:', reply.length);
-      return reply;
+      return data.reply;
     }
     throw new Error(`[AI_CHAT_ERROR] Invalid response: ${JSON.stringify(data)}`);
   } catch (e) {

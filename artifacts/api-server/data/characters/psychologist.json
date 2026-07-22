@@ -1,0 +1,7 @@
+{
+  "id": "psychologist",
+  "name": "Психолог",
+  "prompt_file": "psychologist.md",
+  "model_tier": "fast",
+  "knowledge_tags": ["psychology"]
+}

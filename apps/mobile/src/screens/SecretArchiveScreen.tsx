@@ -8,7 +8,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
-import { getUserId, storage } from '@/core';
+import { ensureBnkrId } from '../services/p2pService';
 
 export type SecretChatMode =
   'hidden' | 'incognito';
@@ -71,12 +71,9 @@ export default function SecretArchiveScreen({
       return;
     }
 
-    const myId = await getUserId(storage);
-    const myFormatted = myId
-      ? `BNKR-${myId.slice(0, 4).toUpperCase()}-${myId.slice(4, 8).toUpperCase()}`
-      : '';
+    const myId = await ensureBnkrId().catch(() => '');
 
-    if (trimmedId === myFormatted) {
+    if (trimmedId === myId) {
       Alert.alert('Ошибка', 'Нельзя начать чат с собой');
       return;
     }

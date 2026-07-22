@@ -1,0 +1,7 @@
+{
+  "id": "producer",
+  "name": "Продюсер",
+  "prompt_file": "producer.md",
+  "model_tier": "smart",
+  "knowledge_tags": []
+}

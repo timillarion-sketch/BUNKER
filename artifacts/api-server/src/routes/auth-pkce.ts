@@ -27,11 +27,11 @@ router.get('/:provider/authorize', (req, res) => {
     Record<string, string>;
 
   if (!['vk', 'yandex'].includes(provider)) {
-    return res.status(400).json({ error: 'Unknown provider' });
+    return res.status(400).json({ error: 'Неизвестный провайдер' });
   }
   if (!code_challenge || !redirect_uri) {
     return res.status(400).json({
-      error: 'code_challenge and redirect_uri required'
+      error: 'Требуются code_challenge и redirect_uri'
     });
   }
 
@@ -76,7 +76,7 @@ router.post('/:provider/token', async (req, res) => {
 
   if (!code || !verifier) {
     return res.status(400).json({
-      error: 'code and verifier required'
+      error: 'Требуются code и verifier'
     });
   }
 
@@ -101,7 +101,7 @@ router.post('/:provider/token', async (req, res) => {
 
   if (!matchedState) {
     return res.status(400).json({
-      error: 'Invalid or expired verifier'
+      error: 'Недействительный или истёкший verifier'
     });
   }
 
@@ -128,7 +128,7 @@ router.post('/:provider/token', async (req, res) => {
     });
   } catch (err) {
     return res.status(502).json({
-      error: `Provider token exchange failed: ${(err as Error).message}`,
+      error: `Ошибка получения токена провайдера: ${(err as Error).message}`,
     });
   }
 });

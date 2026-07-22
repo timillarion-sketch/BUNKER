@@ -10,7 +10,7 @@ router.patch("/auth/me", requireAuth, async (req: AuthenticatedRequest, res: Res
   const userId = req.userId;
 
   if (!username || username.trim().length < 2) {
-    return res.status(400).json({ error: "Username too short" });
+    return res.status(400).json({ error: "Имя пользователя должно содержать не менее 2 символов" });
   }
 
   await db

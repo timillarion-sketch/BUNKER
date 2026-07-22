@@ -14,7 +14,7 @@ router.get("/templates", async (_req, res: Response) => {
       .orderBy(asc(promptsTable.sortOrder));
     return res.json(templates);
   } catch (err) {
-    return res.status(500).json({ error: "Failed to fetch templates" });
+    return res.status(500).json({ error: "Не удалось загрузить шаблоны" });
   }
 });
 
@@ -28,7 +28,7 @@ router.get("/templates/categories", async (_req, res: Response) => {
     const categories = rows.map(r => r.category).filter(Boolean);
     return res.json(categories);
   } catch (err) {
-    return res.status(500).json({ error: "Failed to fetch categories" });
+    return res.status(500).json({ error: "Не удалось загрузить категории" });
   }
 });
 
@@ -44,7 +44,7 @@ router.post("/templates", requireAuth, async (req: AuthenticatedRequest, res: Re
       .limit(1);
 
     if (!user || user.username?.toLowerCase() !== 'timgood') {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Доступ запрещён" });
     }
 
     const { title, category, description, icon, prompt } = req.body as {
@@ -56,7 +56,7 @@ router.post("/templates", requireAuth, async (req: AuthenticatedRequest, res: Re
     };
 
     if (!title || !category || !prompt) {
-      return res.status(400).json({ error: "title, category, and prompt are required" });
+      return res.status(400).json({ error: "Требуются title, category и prompt" });
     }
 
     const [inserted] = await db
@@ -66,7 +66,7 @@ router.post("/templates", requireAuth, async (req: AuthenticatedRequest, res: Re
 
     return res.status(201).json(inserted);
   } catch (err) {
-    return res.status(500).json({ error: "Failed to create template" });
+    return res.status(500).json({ error: "Не удалось создать шаблон" });
   }
 });
 
@@ -82,7 +82,7 @@ router.put("/templates/:id", requireAuth, async (req: AuthenticatedRequest, res:
       .limit(1);
 
     if (!user || user.username?.toLowerCase() !== 'timgood') {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Доступ запрещён" });
     }
 
     const id = Number(req.params.id);
@@ -108,12 +108,12 @@ router.put("/templates/:id", requireAuth, async (req: AuthenticatedRequest, res:
       .returning();
 
     if (!updated) {
-      return res.status(404).json({ error: "Template not found" });
+      return res.status(404).json({ error: "Шаблон не найден" });
     }
 
     return res.json(updated);
   } catch (err) {
-    return res.status(500).json({ error: "Failed to update template" });
+    return res.status(500).json({ error: "Не удалось обновить шаблон" });
   }
 });
 
@@ -129,7 +129,7 @@ router.delete("/templates/:id", requireAuth, async (req: AuthenticatedRequest, r
       .limit(1);
 
     if (!user || user.username?.toLowerCase() !== 'timgood') {
-      return res.status(403).json({ error: "Access denied" });
+      return res.status(403).json({ error: "Доступ запрещён" });
     }
 
     const id = Number(req.params.id);
@@ -139,12 +139,12 @@ router.delete("/templates/:id", requireAuth, async (req: AuthenticatedRequest, r
       .returning();
 
     if (!deleted) {
-      return res.status(404).json({ error: "Template not found" });
+      return res.status(404).json({ error: "Шаблон не найден" });
     }
 
     return res.json({ ok: true });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to delete template" });
+    return res.status(500).json({ error: "Не удалось удалить шаблон" });
   }
 });
 

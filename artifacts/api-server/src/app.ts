@@ -37,7 +37,7 @@ const limiter = rateLimit({
   max: env.NODE_ENV === "production" ? 100 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many requests" },
+  message: { error: "Слишком много запросов. Попробуйте позже." },
 });
 app.use(limiter);
 
