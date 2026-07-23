@@ -24,6 +24,8 @@ const envSchema = z.object({
   YANDEX_CLIENT_ID: z.string().default(""),
   YANDEX_CLIENT_SECRET: z.string().default(""),
   YANDEX_REDIRECT_URI: z.string().default(""),
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
   TELEGRAM_BOT_TOKEN: z.string().min(1),
   TELEGRAM_BOT_USERNAME: z.string().default("BunkerUserbot"),
 });
