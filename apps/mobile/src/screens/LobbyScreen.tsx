@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Modal, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import { useBunkerData } from '../hooks/useBunkerData';
+import { getFacts, deleteFact, addFact, type MemoryFact } from '../services/MemoryService';
 
 interface CharacterCard {
   id: string;
@@ -122,6 +123,38 @@ export default function LobbyScreen() {
   const [tempEmoji, setTempEmoji] = useState('🧠');
   const [tempColor, setTempColor] = useState('#00F0FF');
 
+  const [memoryVisible, setMemoryVisible] = useState(false);
+  const [memoryFacts, setMemoryFacts] = useState<MemoryFact[]>([]);
+  const [newFact, setNewFact] = useState('');
+
+  const loadMemoryFacts = useCallback(async () => {
+    try {
+      const facts = await getFacts();
+      setMemoryFacts(facts);
+    } catch {}
+  }, []);
+
+  const handleDeleteFact = useCallback(async (id: number) => {
+    try {
+      await deleteFact(id);
+      setMemoryFacts(prev => prev.filter(f => f.id !== id));
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось удалить');
+    }
+  }, []);
+
+  const handleAddFact = useCallback(async () => {
+    const text = newFact.trim();
+    if (!text) return;
+    try {
+      const fact = await addFact('global', text);
+      setMemoryFacts(prev => [...prev, fact]);
+      setNewFact('');
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось сохранить');
+    }
+  }, [newFact]);
+
   const editingChar = editingId ? characters.find(c => c.id === editingId) : null;
 
   useEffect(() => {
@@ -134,7 +167,15 @@ export default function LobbyScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
       <View style={[styles.scanlines, { backgroundColor: accent }]} pointerEvents="none" />
-      <Text style={[styles.header, { color: accent, textShadowColor: accent }]}>ПЕРСОНАЛ</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
+        <Text style={[styles.header, { color: accent, textShadowColor: accent }]}>ПЕРСОНАЛ</Text>
+        <TouchableOpacity
+          onPress={() => { loadMemoryFacts(); setMemoryVisible(true); }}
+          style={{ position: 'absolute', right: 16 }}
+        >
+          <Text style={{ color: accent, fontSize: 13, fontWeight: '600', letterSpacing: 1 }}>📚</Text>
+        </TouchableOpacity>
+      </View>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>ВЫБЕРИТЕ СОБЕСЕДНИКА</Text>
       {isLoading && characters.length === 0 && (
         <Text style={[styles.loadingLabel, { color: theme.colors.textMuted }]}>Загрузка персонажей...</Text>
@@ -164,6 +205,79 @@ export default function LobbyScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      <Modal
+        visible={memoryVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMemoryVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { maxHeight: '80%' }]}>
+            <View style={styles.handlebar} />
+            <Text style={styles.modalTitle}>📚 Общая память</Text>
+            <Text style={styles.modalSubtitle}>Факты, которые помнят все персонажи</Text>
+
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+              <TextInput
+                value={newFact}
+                onChangeText={setNewFact}
+                placeholder="Добавить факт..."
+                placeholderTextColor="#404060"
+                style={{
+                  flex: 1, backgroundColor: 'rgba(10,10,15,0.6)', borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.08)', borderRadius: 12,
+                  paddingHorizontal: 14, paddingVertical: 10, color: '#e0e0ff', fontSize: 14,
+                }}
+              />
+              <TouchableOpacity
+                onPress={handleAddFact}
+                style={{
+                  backgroundColor: accent, borderRadius: 12, paddingHorizontal: 16,
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: '#000', fontWeight: '600', fontSize: 13 }}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 300 }}>
+              {memoryFacts.length === 0 && (
+                <Text style={{ color: '#404060', textAlign: 'center', paddingVertical: 20, fontSize: 13 }}>
+                  Нет сохранённых фактов
+                </Text>
+              )}
+              {memoryFacts.map(fact => (
+                <View
+                  key={fact.id}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    backgroundColor: 'rgba(10,10,15,0.4)', borderRadius: 12,
+                    padding: 12, marginBottom: 8,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#e0e0ff', fontSize: 13, lineHeight: 18 }}>{fact.fact}</Text>
+                    <Text style={{ color: '#404060', fontSize: 10, marginTop: 4 }}>
+                      {fact.scope === 'global' ? '🌐 Общая' : `👤 ${fact.characterId}`}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteFact(fact.id)}
+                    style={{ padding: 4 }}
+                  >
+                    <Text style={{ color: '#ff4466', fontSize: 16 }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity onPress={() => setMemoryVisible(false)} style={{ marginTop: 12, alignItems: 'center' }}>
+              <Text style={{ color: '#404060' }}>ЗАКРЫТЬ</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {editingChar && !editingChar.systemPrompt && (
         <Modal
           visible={true}

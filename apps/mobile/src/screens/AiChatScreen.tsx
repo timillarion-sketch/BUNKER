@@ -1,13 +1,14 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Keyboard,
+  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Animated, Keyboard, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useAccent } from '../core/AccentContext';
 import { sendMessage } from '../services/AiCharacterService';
 import { ChatStorageService } from '../services/ChatStorageService';
+import { api } from '@/core';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 const CHARACTER_GREETINGS: Record<string, string> = {
@@ -89,6 +90,35 @@ export default function AiChatScreen({ route, navigation }: Props) {
     });
   }, [characterId]);
 
+  const handleClearChat = useCallback(() => {
+    Alert.alert(
+      'Очистить историю',
+      'Все сообщения с этим персонажем будут удалены. Это действие необратимо.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Очистить',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/messages/${characterId}`);
+              await ChatStorageService.clearHistory(characterId);
+              const greeting = getGreeting(characterId, characterName, systemPrompt);
+              setMessages([{
+                id: 'greeting',
+                role: 'greeting',
+                content: greeting,
+                createdAt: Date.now(),
+              }]);
+            } catch {
+              Alert.alert('Ошибка', 'Не удалось очистить историю');
+            }
+          },
+        },
+      ],
+    );
+  }, [characterId, characterName, systemPrompt]);
+
   useEffect(() => {
     navigation.setOptions({
       headerStyle: { backgroundColor: 'rgba(25,25,27,0.65)' },
@@ -101,8 +131,13 @@ export default function AiChatScreen({ route, navigation }: Props) {
           </Text>
         </View>
       ),
+      headerRight: () => (
+        <TouchableOpacity onPress={handleClearChat} style={{ marginRight: 8, padding: 4 }}>
+          <Text style={{ color: '#ff4466', fontSize: 13, fontWeight: '600' }}>✕</Text>
+        </TouchableOpacity>
+      ),
     });
-  }, []);
+  }, [accent, handleClearChat, characterAvatar, characterName]);
 
   const handleSend = async () => {
     const text = inputText.trim();

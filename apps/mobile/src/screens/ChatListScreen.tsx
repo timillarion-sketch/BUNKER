@@ -234,8 +234,9 @@ export default function ChatListScreen({ navigation }: Props) {
                 AsyncStorage.setItem('p2p_contacts', JSON.stringify(updated));
                 return updated;
               });
-            } catch {
-              Alert.alert('Ошибка', 'Не удалось удалить чат');
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : 'Не удалось удалить чат';
+              Alert.alert('Ошибка', msg);
             }
           },
         },
@@ -250,8 +251,9 @@ export default function ChatListScreen({ navigation }: Props) {
                 AsyncStorage.setItem('p2p_contacts', JSON.stringify(updated));
                 return updated;
               });
-            } catch {
-              Alert.alert('Ошибка', 'Не удалось удалить чат');
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : 'Не удалось удалить чат';
+              Alert.alert('Ошибка', msg);
             }
           },
         },

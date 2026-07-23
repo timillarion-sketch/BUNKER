@@ -368,8 +368,9 @@ router.delete("/p2p/history/:peerId", requireAuth, async (req: AuthenticatedRequ
       res.json({ success: true, mode: "both" });
     }
   } catch (err) {
-    logger.error({ err, peerId, mode }, "Failed to delete p2p history");
-    res.status(500).json({ error: "Не удалось удалить историю" });
+    logger.error({ err, peerId, mode, userId }, "Failed to delete p2p history");
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: "Не удалось удалить чат", detail: message });
   }
 });
 

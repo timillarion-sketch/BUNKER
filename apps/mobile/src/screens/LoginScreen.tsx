@@ -2,15 +2,10 @@ import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import { theme } from '../theme';
 import { api, storage, ApiError } from '../core';
+import { startOAuthFlow } from '../services/OAuthService';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const YANDEX_CLIENT_ID = '93f7e6c6b16c42c89c91ebb5923a6c32';
 
 type RootStackParamList = {
   Login: undefined;
@@ -60,31 +55,13 @@ export default function LoginScreen({ navigation }: Props) {
 
   const handleYandexLogin = async () => {
     try {
-      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'bunker', path: 'oauth' });
-      const authUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-      if (result.type !== 'success') {
-        return;
+      const result = await startOAuthFlow('yandex');
+      await api.setToken(result.accessToken);
+      if (result.refreshToken) {
+        await api.setRefreshToken(result.refreshToken);
       }
-
-      const url = new URL(result.url);
-      const code = url.searchParams.get('code');
-      if (!code) {
-        Alert.alert('Ошибка', 'Не удалось получить код авторизации');
-        return;
-      }
-
-      const res = await api.post<{ accessToken: string; refreshToken: string }>(
-        '/api/auth/yandex/callback',
-        { code, redirect_uri: redirectUri },
-      );
-
-      await api.setToken(res.accessToken);
-      await api.setRefreshToken(res.refreshToken);
       try {
-        const payload = JSON.parse(atob(res.accessToken.split('.')[1]));
+        const payload = JSON.parse(atob(result.accessToken.split('.')[1]));
         if (payload.username) {
           await storage.set('current_username', payload.username);
         }
