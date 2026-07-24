@@ -17,6 +17,8 @@ import {
   FEATURES_TEXT,
   TERMS_TEXT,
   PRIVACY_TEXT,
+  SUPPORT_TEXT,
+  SUPPORT_SYSTEM_PROMPT,
   ABOUT_BUTTONS,
 } from "../lib/telegram-bot";
 
@@ -50,6 +52,12 @@ const pendingPasswordChanges = new Map<number, {
   step: "awaiting_old_password" | "awaiting_new_password";
   msgIds: number[];
 }>();
+
+const pendingSupport = new Map<number, {
+  messages: Array<{ role: string; content: string }>;
+}>();
+
+const ESCALATION_KEYWORDS = ["связаться с оператором", "оператор", "человек", "админ", "заявка"];
 
 function scheduleCleanup(chatId: number, msgIds: number[], delayMs = 600_000) {
   if (msgIds.length === 0) return;
@@ -117,6 +125,10 @@ async function handleCommand(chatId: number, fromId: number, text: string) {
         reply_markup: buildAboutKeyboard(),
       });
       break;
+
+    case "/support":
+      await startSupport(chatId, fromId);
+      break;
   }
 }
 
@@ -134,6 +146,10 @@ async function handleButtonPress(chatId: number, fromId: number, text: string) {
       const msg = await sendMessage(chatId, "Выберите раздел:", {
         reply_markup: buildAboutKeyboard(),
       });
+      break;
+
+    case ABOUT_BUTTONS.SUPPORT:
+      await startSupport(chatId, fromId);
       break;
   }
 }
@@ -182,7 +198,102 @@ async function startPasswordChange(chatId: number, fromId: number) {
   if (m) state.msgIds.push(m);
 }
 
+async function startSupport(chatId: number, fromId: number) {
+  pendingRegistrations.delete(fromId);
+  pendingPasswordChanges.delete(fromId);
+
+  pendingSupport.set(fromId, { messages: [] });
+
+  await sendMessage(chatId, SUPPORT_TEXT, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "◀ Назад в меню", callback_data: "support_exit" }],
+      ],
+    },
+  });
+}
+
+async function callSupportAI(history: Array<{ role: string; content: string }>): Promise<string> {
+  const env = getEnv();
+  const response = await fetch(`${env.OPENROUTER_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${env.OPENROUTER_API_KEY_1}`,
+    },
+    body: JSON.stringify({
+      model: "openrouter/free",
+      messages: [
+        { role: "system", content: SUPPORT_SYSTEM_PROMPT },
+        ...history.slice(-10),
+      ],
+      max_tokens: 1000,
+    }),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    logger.error({ status: response.status, body: text }, "Support AI call failed");
+    return "Извините, сервис временно недоступен. Попробуйте позже или напишите «связаться с оператором».";
+  }
+
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  return data?.choices?.[0]?.message?.content ?? "...";
+}
+
+function isEscalation(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  return ESCALATION_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+async function handleEscalation(chatId: number, fromId: number, session: { messages: Array<{ role: string; content: string }> }) {
+  const conversationLog = session.messages
+    .map((m) => `${m.role === "user" ? "Пользователь" : "Бот"}: ${m.content}`)
+    .join("\n---\n");
+
+  logger.info({ telegramId: fromId, conversation: conversationLog }, "Support escalation");
+
+  await sendMessage(
+    chatId,
+    "✅ Ваша заявка принята. Администратор свяжется с вами в ближайшее время.",
+    { reply_markup: buildMainKeyboard() },
+  );
+}
+
+async function handleSupportMessage(chatId: number, fromId: number, text: string) {
+  const session = pendingSupport.get(fromId);
+  if (!session) return;
+
+  if (isEscalation(text)) {
+    pendingSupport.delete(fromId);
+    await handleEscalation(chatId, fromId, session);
+    return;
+  }
+
+  session.messages.push({ role: "user", content: text });
+
+  const reply = await callSupportAI(session.messages);
+
+  session.messages.push({ role: "assistant", content: reply });
+
+  await sendMessage(chatId, reply, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "◀ Назад в меню", callback_data: "support_exit" }],
+      ],
+    },
+  });
+}
+
 async function handleTextMessage(chatId: number, fromId: number, text: string, incomingMsgId: number) {
+  const support = pendingSupport.get(fromId);
+  if (support) {
+    await handleSupportMessage(chatId, fromId, text);
+    return;
+  }
   const reg = pendingRegistrations.get(fromId);
   if (reg) {
     reg.msgIds.push(incomingMsgId);
@@ -374,6 +485,14 @@ async function handleCallbackQuery(cb: TgCallbackQuery) {
 
     case "back_to_start":
       await editMessageText(message.chat.id, message.message_id, START_TEXT, {
+        reply_markup: buildMainKeyboard(),
+      });
+      break;
+
+    case "support_exit":
+      pendingSupport.delete(message.chat.id);
+      await editMessageText(message.chat.id, message.message_id, "◀ Вы вышли из режима поддержки.");
+      await sendMessage(message.chat.id, START_TEXT, {
         reply_markup: buildMainKeyboard(),
       });
       break;
