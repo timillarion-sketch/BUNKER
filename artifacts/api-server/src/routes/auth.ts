@@ -9,6 +9,7 @@ import { logger } from "../lib/logger";
 import { requireAuth, signToken, verifyRefreshToken, type AuthenticatedRequest } from "../lib/auth";
 import { getEnv } from "../lib/env";
 import { getCallbackUrl } from "../lib/oauth";
+import { peekPendingState } from "./auth-pkce";
 
 function generateBnkrId(userId: number, attempt = 0): string {
   const seed = attempt === 0 ? String(userId) : `${userId}-${attempt}`;
@@ -502,10 +503,20 @@ router.get("/auth/yandex", (req, res) => {
 });
 
 router.get("/auth/yandex/callback", async (req, res) => {
-  const { code, error: yaError } = req.query as { code?: string; error?: string };
+  const { code, state, error: yaError } = req.query as Record<string, string>;
   if (yaError || !code) {
-    res.status(400).json({ error: yaError || "Отсутствует код авторизации" });
+    const errorMsg = yaError || "Отсутствует код авторизации";
+    const pkceState = state ? peekPendingState(state) : null;
+    if (pkceState) {
+      return res.redirect(302, `${pkceState.mobileRedirectUri}?error=${errorMsg}`);
+    }
+    res.status(400).json({ error: errorMsg });
     return;
+  }
+
+  const pkceState = state ? peekPendingState(state) : null;
+  if (pkceState) {
+    return res.redirect(302, `${pkceState.mobileRedirectUri}?code=${code}&state=${state}`);
   }
 
   try {

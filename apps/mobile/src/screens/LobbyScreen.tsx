@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import { useBunkerData } from '../hooks/useBunkerData';
+import { api } from '../core';
 import { getFacts, deleteFact, addFact, type MemoryFact } from '../services/MemoryService';
 
 interface CharacterCard {
@@ -126,6 +127,9 @@ export default function LobbyScreen() {
   const [memoryVisible, setMemoryVisible] = useState(false);
   const [memoryFacts, setMemoryFacts] = useState<MemoryFact[]>([]);
   const [newFact, setNewFact] = useState('');
+  const [memoryCounts, setMemoryCounts] = useState<Record<string, number>>({});
+  const [globalMemoryCount, setGlobalMemoryCount] = useState(0);
+  const [merging, setMerging] = useState(false);
 
   const loadMemoryFacts = useCallback(async () => {
     try {
@@ -133,6 +137,28 @@ export default function LobbyScreen() {
       setMemoryFacts(facts);
     } catch {}
   }, []);
+
+  const loadMemoryCounts = useCallback(async () => {
+    try {
+      const res = await api.get<{ perCharacter: Record<string, number>; globalTotal: number }>('/api/memory/facts/counts');
+      setMemoryCounts(res.perCharacter);
+      setGlobalMemoryCount(res.globalTotal);
+    } catch {}
+  }, []);
+
+  const handleMerge = useCallback(async () => {
+    setMerging(true);
+    try {
+      const res = await api.post<{ merged: number }>('/api/memory/merge');
+      Alert.alert('Готово', `Добавлено ${res.merged} новых фактов в общую память`);
+      loadMemoryFacts();
+      loadMemoryCounts();
+    } catch {
+      Alert.alert('Ошибка', 'Не удалось объединить память');
+    } finally {
+      setMerging(false);
+    }
+  }, [loadMemoryFacts, loadMemoryCounts]);
 
   const handleDeleteFact = useCallback(async (id: number) => {
     try {
@@ -170,7 +196,7 @@ export default function LobbyScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
         <Text style={[styles.header, { color: accent, textShadowColor: accent }]}>ПЕРСОНАЛ</Text>
         <TouchableOpacity
-          onPress={() => { loadMemoryFacts(); setMemoryVisible(true); }}
+          onPress={() => { loadMemoryFacts(); loadMemoryCounts(); setMemoryVisible(true); }}
           style={{ position: 'absolute', right: 16 }}
         >
           <Text style={{ color: accent, fontSize: 13, fontWeight: '600', letterSpacing: 1 }}>📚</Text>
@@ -191,6 +217,13 @@ export default function LobbyScreen() {
           >
             <View style={[styles.cardGlow, { backgroundColor: (char.color || accent) + '15' }]} />
             <Text style={styles.cardEmoji}>{char.emoji}</Text>
+            {memoryCounts[char.id] > 0 && (
+              <View style={[styles.memoryBadge, { backgroundColor: (char.color || accent) + '33', borderColor: char.color || accent }]}>
+                <Text style={[styles.memoryBadgeText, { color: char.color || accent }]}>
+                  🧠 {memoryCounts[char.id]}
+                </Text>
+              </View>
+            )}
             <Text style={styles.cardName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
               {char.name}
             </Text>
@@ -271,7 +304,28 @@ export default function LobbyScreen() {
               ))}
             </ScrollView>
 
-            <TouchableOpacity onPress={() => setMemoryVisible(false)} style={{ marginTop: 12, alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity
+                onPress={handleMerge}
+                disabled={merging}
+                style={{
+                  flex: 1, backgroundColor: accent, borderRadius: 12, paddingVertical: 12,
+                  alignItems: 'center', opacity: merging ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ color: '#000', fontWeight: '600', fontSize: 13 }}>
+                  {merging ? 'ОБЪЕДИНЕНИЕ...' : '🔄 Объединить'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {globalMemoryCount > 0 && (
+              <Text style={{ color: '#404060', fontSize: 11, textAlign: 'center', marginTop: 8 }}>
+                🌐 Всего фактов: {globalMemoryCount}
+              </Text>
+            )}
+
+            <TouchableOpacity onPress={() => setMemoryVisible(false)} style={{ marginTop: 8, alignItems: 'center' }}>
               <Text style={{ color: '#404060' }}>ЗАКРЫТЬ</Text>
             </TouchableOpacity>
           </View>
@@ -499,5 +553,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     letterSpacing: 2,
+  },
+  memoryBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  memoryBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

@@ -1,9 +1,10 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Dimensions, Switch, Animated, RefreshControl, ScrollView } from 'react-native';
+import { useRef, useState, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Dimensions, Switch, Animated } from 'react-native';
 import { WebView, WebViewMessageEvent, WebViewProgressEvent, WebViewErrorEvent } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
+import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useVpnProxy } from '../hooks/useVpnProxy';
 import { checkDnsLeak } from '../utils/dnsLeakDetector';
 import { WEBVIEW_INJECTED_JS, isUrlSafe, NEURAL_ANALYSIS_JS } from '../utils/webViewSecurity';
@@ -44,8 +45,10 @@ export default function BrowserScreen() {
   const [neuralEnabled, setNeuralEnabled] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const toastOpacity = useRef(new Animated.Value(0)).current;
-  const [refreshing, setRefreshing] = useState(false);
-  const [webViewKey, setWebViewKey] = useState(0);
+
+  const containerPaddingBottom = Platform.OS === 'android'
+    ? TAB_BAR_HEIGHT + insets.bottom + 24
+    : TAB_BAR_HEIGHT + insets.bottom;
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -55,12 +58,6 @@ export default function BrowserScreen() {
       Animated.timing(toastOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
     ]).start();
   };
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setWebViewKey(k => k + 1);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
 
   const onNavigationStateChange = (navState: any) => {
     const { url: newUrl, canGoBack: back, canGoForward: forward, loading } = navState;
@@ -209,20 +206,9 @@ export default function BrowserScreen() {
         <View style={[styles.progressBar, { backgroundColor: theme.colors.accent, width: width * progress }]} />
       )}
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flex: 1 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={accent}
-            progressBackgroundColor="#1e1e2e"
-          />
-        }
-      >
-        <WebView key={webViewKey} {...webViewProps} />
-      </ScrollView>
+      <View style={{ flex: 1, paddingBottom: containerPaddingBottom }}>
+        <WebView {...webViewProps} />
+      </View>
 
       {error && (
         <View style={styles.errorOverlay}>

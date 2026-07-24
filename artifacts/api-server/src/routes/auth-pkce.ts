@@ -21,6 +21,15 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+export function peekPendingState(state: string): { mobileRedirectUri: string } | null {
+  const entry = pendingVerifiers.get(state);
+  if (!entry || entry.expiresAt < Date.now()) {
+    pendingVerifiers.delete(state);
+    return null;
+  }
+  return { mobileRedirectUri: (entry as any).mobileRedirectUri ?? "" };
+}
+
 router.get('/:provider/authorize', (req, res) => {
   const { provider } = req.params;
   const { code_challenge, redirect_uri } = req.query as

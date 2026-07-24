@@ -5,6 +5,8 @@ import {
 import { theme } from '../theme';
 import { api, storage, ApiError } from '../core';
 import { startOAuthFlow } from '../services/OAuthService';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
