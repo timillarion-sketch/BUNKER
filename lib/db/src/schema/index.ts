@@ -2,6 +2,7 @@ export * from "./ai-memory";
 export * from "./characters";
 export * from "./contacts";
 export * from "./memory-settings";
+export * from "./character-memory-settings";
 export * from "./user-memory-facts";
 export * from "./users";
 export * from "./sessions";

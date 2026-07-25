@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Modal, Alert, Switch } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -129,7 +129,8 @@ export default function LobbyScreen() {
   const [newFact, setNewFact] = useState('');
   const [memoryCounts, setMemoryCounts] = useState<Record<string, number>>({});
   const [globalMemoryCount, setGlobalMemoryCount] = useState(0);
-  const [merging, setMerging] = useState(false);
+  const [characterSettings, setCharacterSettings] = useState<Record<string, boolean>>({});
+  const [globalCounts, setGlobalCounts] = useState<Record<string, number>>({});
 
   const loadMemoryFacts = useCallback(async () => {
     try {
@@ -140,25 +141,35 @@ export default function LobbyScreen() {
 
   const loadMemoryCounts = useCallback(async () => {
     try {
-      const res = await api.get<{ perCharacter: Record<string, number>; globalTotal: number }>('/api/memory/facts/counts');
+      const res = await api.get<{ perCharacter: Record<string, number>; perCharacterGlobal: Record<string, number>; globalTotal: number }>('/api/memory/facts/counts');
       setMemoryCounts(res.perCharacter);
+      setGlobalCounts(res.perCharacterGlobal);
       setGlobalMemoryCount(res.globalTotal);
     } catch {}
   }, []);
 
-  const handleMerge = useCallback(async () => {
-    setMerging(true);
+  const loadCharacterSettings = useCallback(async () => {
     try {
-      const res = await api.post<{ merged: number }>('/api/memory/merge');
-      Alert.alert('Готово', `Добавлено ${res.merged} новых фактов в общую память`);
-      loadMemoryFacts();
-      loadMemoryCounts();
+      const res = await api.get<{ settings: Array<{ characterId: string; sharesMemoryWithGlobal: boolean }> }>('/api/memory/character-settings');
+      const settingsMap: Record<string, boolean> = {};
+      for (const s of res.settings) {
+        settingsMap[s.characterId] = s.sharesMemoryWithGlobal;
+      }
+      setCharacterSettings(settingsMap);
+    } catch {}
+  }, []);
+
+  const handleToggleMemoryShare = useCallback(async (characterId: string, newValue: boolean) => {
+    try {
+      await api.patch(`/api/memory/character-settings/${characterId}`, { sharesMemoryWithGlobal: newValue });
+      setCharacterSettings(prev => ({ ...prev, [characterId]: newValue }));
+      if (newValue) {
+        loadMemoryCounts();
+      }
     } catch {
-      Alert.alert('Ошибка', 'Не удалось объединить память');
-    } finally {
-      setMerging(false);
+      Alert.alert('Ошибка', 'Не удалось изменить настройку');
     }
-  }, [loadMemoryFacts, loadMemoryCounts]);
+  }, [loadMemoryCounts]);
 
   const handleDeleteFact = useCallback(async (id: number) => {
     try {
@@ -190,19 +201,24 @@ export default function LobbyScreen() {
     }
   }, [editingId]);
 
+  useEffect(() => {
+    loadCharacterSettings();
+  }, [loadCharacterSettings]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
       <View style={[styles.scanlines, { backgroundColor: accent }]} pointerEvents="none" />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
         <Text style={[styles.header, { color: accent, textShadowColor: accent }]}>ПЕРСОНАЛ</Text>
         <TouchableOpacity
-          onPress={() => { loadMemoryFacts(); loadMemoryCounts(); setMemoryVisible(true); }}
+            onPress={() => { loadMemoryFacts(); loadMemoryCounts(); loadCharacterSettings(); setMemoryVisible(true); }}
           style={{ position: 'absolute', right: 16 }}
         >
           <Text style={{ color: accent, fontSize: 13, fontWeight: '600', letterSpacing: 1 }}>📚</Text>
         </TouchableOpacity>
       </View>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>ВЫБЕРИТЕ СОБЕСЕДНИКА</Text>
+      <Text style={[styles.memoryHint, { color: theme.colors.textMuted }]}>🌐 — включить общую память (факты синхронизируются в глобальную базу)</Text>
       {isLoading && characters.length === 0 && (
         <Text style={[styles.loadingLabel, { color: theme.colors.textMuted }]}>Загрузка персонажей...</Text>
       )}
@@ -217,24 +233,45 @@ export default function LobbyScreen() {
           >
             <View style={[styles.cardGlow, { backgroundColor: (char.color || accent) + '15' }]} />
             <Text style={styles.cardEmoji}>{char.emoji}</Text>
-            {memoryCounts[char.id] > 0 && (
-              <View style={[styles.memoryBadge, { backgroundColor: (char.color || accent) + '33', borderColor: char.color || accent }]}>
-                <Text style={[styles.memoryBadgeText, { color: char.color || accent }]}>
-                  🧠 {memoryCounts[char.id]}
-                </Text>
-              </View>
-            )}
+            <View style={{ position: 'absolute', top: 12, right: 12, gap: 4 }}>
+              {memoryCounts[char.id] > 0 && (
+                <View style={[styles.memoryBadge, { backgroundColor: (char.color || accent) + '33', borderColor: char.color || accent }]}>
+                  <Text style={[styles.memoryBadgeText, { color: char.color || accent }]}>
+                    🧠 {memoryCounts[char.id]}
+                  </Text>
+                </View>
+              )}
+              {globalCounts[char.id] > 0 && (
+                <View style={[styles.memoryBadge, { backgroundColor: (char.color || accent) + '33', borderColor: char.color || accent }]}>
+                  <Text style={[styles.memoryBadgeText, { color: char.color || accent }]}>
+                    🌐 {globalCounts[char.id]}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.cardName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>
               {char.name}
             </Text>
             <Text style={styles.cardDesc} numberOfLines={3}>
               {char.description}
             </Text>
-            {!char.systemPrompt && (
-              <Text style={[styles.editHint, { color: (char.color || accent) + '80' }]}>
-                удерживай для настройки
-              </Text>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+              {!char.systemPrompt && (
+                <Text style={[styles.editHint, { flex: 1, color: (char.color || accent) + '80', marginTop: 0 }]}>
+                  удерживай для настройки
+                </Text>
+              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+                <Text style={{ color: '#404060', fontSize: 9 }}>🌐</Text>
+                <Switch
+                  value={characterSettings[char.id] ?? false}
+                  onValueChange={(v) => handleToggleMemoryShare(char.id, v)}
+                  trackColor={{ false: '#303045', true: (char.color || accent) + '80' }}
+                  thumbColor={characterSettings[char.id] ? (char.color || accent) : '#606080'}
+                  style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
+                />
+              </View>
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -303,21 +340,6 @@ export default function LobbyScreen() {
                 </View>
               ))}
             </ScrollView>
-
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-              <TouchableOpacity
-                onPress={handleMerge}
-                disabled={merging}
-                style={{
-                  flex: 1, backgroundColor: accent, borderRadius: 12, paddingVertical: 12,
-                  alignItems: 'center', opacity: merging ? 0.5 : 1,
-                }}
-              >
-                <Text style={{ color: '#000', fontWeight: '600', fontSize: 13 }}>
-                  {merging ? 'ОБЪЕДИНЕНИЕ...' : '🔄 Объединить'}
-                </Text>
-              </TouchableOpacity>
-            </View>
 
             {globalMemoryCount > 0 && (
               <Text style={{ color: '#404060', fontSize: 11, textAlign: 'center', marginTop: 8 }}>
@@ -555,9 +577,6 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   memoryBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 8,
@@ -566,5 +585,13 @@ const styles = StyleSheet.create({
   memoryBadgeText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  memoryHint: {
+    fontSize: 9,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    marginBottom: 16,
+    marginTop: -20,
+    paddingHorizontal: 24,
   },
 });

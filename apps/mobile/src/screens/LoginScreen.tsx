@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../theme';
 import { api, storage, ApiError } from '../core';
 import { startOAuthFlow } from '../services/OAuthService';
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
+import { ChatStorageService } from '../services/ChatStorageService';
+import { resetBnkrIdCache } from '../services/p2pService';
+
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
@@ -30,9 +32,17 @@ export default function LoginScreen({ navigation }: Props) {
     }
     setLoading(true);
     try {
-      const res = await api.post<{ accessToken: string; refreshToken: string }>('/api/auth/login', { username, password });
+      resetBnkrIdCache();
+      await api.clearTokens();
+      await ChatStorageService.clearAll();
+      await storage.remove('bunker_user_id');
+      await AsyncStorage.removeItem('p2p_contacts');
+      await AsyncStorage.removeItem('secret_contacts');
+
+      const res = await api.post<{ accessToken: string; refreshToken: string; user: { id: number } }>('/api/auth/login', { username, password });
       await api.setToken(res.accessToken);
       await api.setRefreshToken(res.refreshToken);
+      await storage.set('bunker_user_id', String(res.user.id));
       try {
         const payload = JSON.parse(atob(res.accessToken.split('.')[1]));
         if (payload.username) {
@@ -57,10 +67,20 @@ export default function LoginScreen({ navigation }: Props) {
 
   const handleYandexLogin = async () => {
     try {
+      resetBnkrIdCache();
+      await api.clearTokens();
+      await ChatStorageService.clearAll();
+      await storage.remove('bunker_user_id');
+      await AsyncStorage.removeItem('p2p_contacts');
+      await AsyncStorage.removeItem('secret_contacts');
+
       const result = await startOAuthFlow('yandex');
       await api.setToken(result.accessToken);
       if (result.refreshToken) {
         await api.setRefreshToken(result.refreshToken);
+      }
+      if (result.userId) {
+        await storage.set('bunker_user_id', String(result.userId));
       }
       try {
         const payload = JSON.parse(atob(result.accessToken.split('.')[1]));
@@ -76,41 +96,7 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   const handleTelegramLogin = async () => {
-    setLoading(true);
-    try {
-      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'bunker', path: 'auth/success' });
-      const authUrl = `${api.baseUrl}/auth/telegram/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
-
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-      if (result.type !== 'success') {
-        return;
-      }
-
-      const url = new URL(result.url);
-      const accessToken = url.searchParams.get('accessToken');
-      const refreshToken = url.searchParams.get('refreshToken');
-
-      if (!accessToken || !refreshToken) {
-        Alert.alert('Ошибка', 'Не удалось получить токены');
-        return;
-      }
-
-      await api.setToken(accessToken);
-      await api.setRefreshToken(refreshToken);
-      try {
-        const payload = JSON.parse(atob(accessToken.split('.')[1]));
-        if (payload.username) {
-          await storage.set('current_username', payload.username);
-        }
-      } catch {}
-      navigation.replace('MainTabs');
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Ошибка авторизации';
-      Alert.alert('Ошибка', msg);
-    } finally {
-      setLoading(false);
-    }
+    await Linking.openURL('https://t.me/BunkerUserbot');
   };
 
   return (

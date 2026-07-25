@@ -29,6 +29,10 @@ export function getCachedBnkrId(): string | null {
   return bnkrIdCache;
 }
 
+export function resetBnkrIdCache(): void {
+  bnkrIdCache = null;
+}
+
 export async function ensureBnkrId(): Promise<string> {
   if (bnkrIdCache) return bnkrIdCache;
 

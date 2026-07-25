@@ -24,17 +24,18 @@ async function initDb(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS chat_messages (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       character_id TEXT NOT NULL,
       role TEXT NOT NULL CHECK(role IN ('user','assistant')),
       content TEXT NOT NULL,
       created_at INTEGER NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS idx_char_time
-      ON chat_messages(character_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_user_char_time
+      ON chat_messages(user_id, character_id, created_at DESC);
   `);
 }
 
-export async function getMessages(characterId: string, limit = 50): Promise<ChatMessage[]> {
+export async function getMessages(userId: string, characterId: string, limit = 50): Promise<ChatMessage[]> {
   const db = await getDb();
   try {
     const rows = await db.getAllAsync<{
@@ -44,8 +45,8 @@ export async function getMessages(characterId: string, limit = 50): Promise<Chat
       content: string;
       created_at: number;
     }>(
-      'SELECT id, character_id, role, content, created_at FROM chat_messages WHERE character_id = ? ORDER BY created_at ASC LIMIT ?',
-      [characterId, limit]
+      'SELECT id, character_id, role, content, created_at FROM chat_messages WHERE user_id = ? AND character_id = ? ORDER BY created_at ASC LIMIT ?',
+      [userId, characterId, limit]
     );
     return rows.map((row) => ({
       id: row.id,
@@ -60,12 +61,12 @@ export async function getMessages(characterId: string, limit = 50): Promise<Chat
   }
 }
 
-export async function saveMessage(msg: ChatMessage): Promise<void> {
+export async function saveMessage(userId: string, msg: ChatMessage): Promise<void> {
   const db = await getDb();
   try {
     await db.runAsync(
-      'INSERT INTO chat_messages (id, character_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)',
-      [msg.id, msg.characterId, msg.role, msg.content, msg.createdAt]
+      'INSERT INTO chat_messages (id, user_id, character_id, role, content, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [msg.id, userId, msg.characterId, msg.role, msg.content, msg.createdAt]
     );
   } catch (e) {
     console.error('[ChatStorageService] saveMessage error:', e);
@@ -73,12 +74,32 @@ export async function saveMessage(msg: ChatMessage): Promise<void> {
   }
 }
 
-export async function clearHistory(characterId: string): Promise<void> {
+export async function clearHistory(userId: string, characterId: string): Promise<void> {
   const db = await getDb();
   try {
-    await db.runAsync('DELETE FROM chat_messages WHERE character_id = ?', [characterId]);
+    await db.runAsync('DELETE FROM chat_messages WHERE user_id = ? AND character_id = ?', [userId, characterId]);
   } catch (e) {
     console.error('[ChatStorageService] clearHistory error:', e);
+    throw e;
+  }
+}
+
+export async function clearAll(): Promise<void> {
+  const db = await getDb();
+  try {
+    await db.runAsync('DELETE FROM chat_messages');
+  } catch (e) {
+    console.error('[ChatStorageService] clearAll error:', e);
+    throw e;
+  }
+}
+
+export async function clearAllForUser(userId: string): Promise<void> {
+  const db = await getDb();
+  try {
+    await db.runAsync('DELETE FROM chat_messages WHERE user_id = ?', [userId]);
+  } catch (e) {
+    console.error('[ChatStorageService] clearAllForUser error:', e);
     throw e;
   }
 }
@@ -100,5 +121,7 @@ export const ChatStorageService = {
   getMessages,
   saveMessage,
   clearHistory,
+  clearAll,
+  clearAllForUser,
   getDbSizeBytes,
 };

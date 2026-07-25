@@ -10,6 +10,7 @@ import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import { api } from '@/core';
 import { connectSse, onContactRequest, onChatDeleted, deleteChat, ensureBnkrId } from '../services/p2pService';
+import { isValidBnkrId } from '../core/bnkr';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import SecretPinScreen from './SecretPinScreen';
 
@@ -78,7 +79,14 @@ export default function ChatListScreen({ navigation }: Props) {
 
   useEffect(() => {
     AsyncStorage.getItem('p2p_contacts').then(data => {
-      if (data) setContacts(JSON.parse(data));
+      if (data) {
+        const all: Contact[] = JSON.parse(data);
+        const valid = all.filter(c => isValidBnkrId(c.id));
+        setContacts(valid);
+        if (valid.length !== all.length) {
+          AsyncStorage.setItem('p2p_contacts', JSON.stringify(valid));
+        }
+      }
     });
   }, []);
 
@@ -147,6 +155,11 @@ export default function ChatListScreen({ navigation }: Props) {
 
     if (!trimmed) {
       Alert.alert('Ошибка', 'Введите ID собеседника');
+      return;
+    }
+
+    if (!isValidBnkrId(trimmed)) {
+      Alert.alert('Ошибка', 'Неверный формат BNKR-ID. Ожидается BNKR-XXXX-XXXX');
       return;
     }
 
@@ -370,7 +383,7 @@ export default function ChatListScreen({ navigation }: Props) {
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <TouchableOpacity
             style={styles.modalOverlay}

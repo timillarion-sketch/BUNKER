@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList,
   StyleSheet, Modal, TextInput, Alert,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -9,6 +10,7 @@ import {
 } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
 import { ensureBnkrId } from '../services/p2pService';
+import { isValidBnkrId } from '../core/bnkr';
 
 export type SecretChatMode =
   'hidden' | 'incognito';
@@ -52,7 +54,14 @@ export default function SecretArchiveScreen({
 
   useEffect(() => {
     AsyncStorage.getItem('secret_contacts').then(d => {
-      if (d) setContacts(JSON.parse(d));
+      if (d) {
+        const all: SecretContact[] = JSON.parse(d);
+        const valid = all.filter(c => isValidBnkrId(c.peerId));
+        setContacts(valid);
+        if (valid.length !== all.length) {
+          AsyncStorage.setItem('secret_contacts', JSON.stringify(valid));
+        }
+      }
     });
   }, []);
 
@@ -68,6 +77,11 @@ export default function SecretArchiveScreen({
     const trimmedId = peerId.trim().toUpperCase();
     if (!trimmedId) {
       Alert.alert('Ошибка', 'Введи BNKR-ID собеседника');
+      return;
+    }
+
+    if (!isValidBnkrId(trimmedId)) {
+      Alert.alert('Ошибка', 'Неверный формат BNKR-ID. Ожидается BNKR-XXXX-XXXX');
       return;
     }
 
@@ -210,47 +224,52 @@ export default function SecretArchiveScreen({
         animationType="slide"
         onRequestClose={() => setShowIdInput(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.handlebar} />
-            <Text style={[styles.idModalTitle, { color: accent }]}>
-              {selectedMode === 'incognito' ? '💀 ИНКОГНИТО' : '🔒 СКРЫТЫЙ ЧАТ'}
-            </Text>
-            <Text style={styles.idModalHint}>
-              Введи BNKR-ID собеседника
-            </Text>
-            <TextInput
-              value={peerName}
-              onChangeText={setPeerName}
-              placeholder="Имя контакта (необязательно)"
-              placeholderTextColor="#404060"
-              style={styles.idInput}
-            />
-            <TextInput
-              value={peerId}
-              onChangeText={t => setPeerId(t.toUpperCase())}
-              placeholder="BNKR-XXXX-XXXX"
-              placeholderTextColor="#404060"
-              autoCapitalize="characters"
-              autoCorrect={false}
-              style={[styles.idInput, styles.idInputCode]}
-            />
-            <View style={styles.idActions}>
-              <TouchableOpacity
-                onPress={handleCreateSecret}
-                style={[styles.idConfirmBtn, { backgroundColor: accent }]}
-              >
-                <Text style={styles.idConfirmText}>СОЗДАТЬ КАНАЛ</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowIdInput(false)}
-                style={styles.idCancelBtn}
-              >
-                <Text style={{ color: '#404060' }}>ОТМЕНА</Text>
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalSheet}>
+              <View style={styles.handlebar} />
+              <Text style={[styles.idModalTitle, { color: accent }]}>
+                {selectedMode === 'incognito' ? '💀 ИНКОГНИТО' : '🔒 СКРЫТЫЙ ЧАТ'}
+              </Text>
+              <Text style={styles.idModalHint}>
+                Введи BNKR-ID собеседника
+              </Text>
+              <TextInput
+                value={peerName}
+                onChangeText={setPeerName}
+                placeholder="Имя контакта (необязательно)"
+                placeholderTextColor="#404060"
+                style={styles.idInput}
+              />
+              <TextInput
+                value={peerId}
+                onChangeText={t => setPeerId(t.toUpperCase())}
+                placeholder="BNKR-XXXX-XXXX"
+                placeholderTextColor="#404060"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                style={[styles.idInput, styles.idInputCode]}
+              />
+              <View style={styles.idActions}>
+                <TouchableOpacity
+                  onPress={handleCreateSecret}
+                  style={[styles.idConfirmBtn, { backgroundColor: accent }]}
+                >
+                  <Text style={styles.idConfirmText}>СОЗДАТЬ КАНАЛ</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowIdInput(false)}
+                  style={styles.idCancelBtn}
+                >
+                  <Text style={{ color: '#404060' }}>ОТМЕНА</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

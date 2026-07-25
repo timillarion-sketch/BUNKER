@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, ScrollView, Switch, LayoutAnimation, Platform, UIManager, Modal,
 } from 'react-native';
@@ -9,7 +10,8 @@ import { useAccent, ACCENT_PRESETS, AccentKey } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import ColorPickerModal from '../components/ColorPickerModal';
 import { api, clearTokens, storage } from '../core';
-import { ensureBnkrId } from '../services/p2pService';
+import { ChatStorageService } from '../services/ChatStorageService';
+import { ensureBnkrId, resetBnkrIdCache } from '../services/p2pService';
 import * as Clipboard from 'expo-clipboard';
 import { VpnService } from '../services/VpnService';
 import { parseProxyUri } from '../utils/configParser';
@@ -109,11 +111,13 @@ export default function ProfileScreen({ navigation }: Props) {
     };
   }, [vpnStatus, pulse, stopPulse, vpn]);
 
-  useEffect(() => {
-    ensureBnkrId().then(id => {
-      setUserId(id);
-    }).catch(() => {});
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      ensureBnkrId().then(id => {
+        setUserId(id);
+      }).catch(() => {});
+    }, []),
+  );
 
   useEffect(() => {
     AsyncStorage.getItem('user_nickname').then(n => {
@@ -171,10 +175,16 @@ export default function ProfileScreen({ navigation }: Props) {
             try {
               await api.post('/api/auth/logout');
             } catch {}
+            resetBnkrIdCache();
             await clearTokens();
             await SecureStore.deleteItemAsync('bunker_access_token');
             await SecureStore.deleteItemAsync('bunker_refresh_token');
             await SecureStore.deleteItemAsync('vpn_config');
+            await ChatStorageService.clearAll();
+            await storage.remove('bunker_user_id');
+            await AsyncStorage.removeItem('p2p_contacts');
+            await AsyncStorage.removeItem('secret_contacts');
+            await AsyncStorage.removeItem('character_customizations');
             navigation.replace('Login');
           },
         },
@@ -190,9 +200,15 @@ export default function ProfileScreen({ navigation }: Props) {
           try {
             await api.post('/api/auth/logout');
           } catch {}
+          resetBnkrIdCache();
           await clearTokens();
           await SecureStore.deleteItemAsync('bunker_access_token');
           await SecureStore.deleteItemAsync('bunker_refresh_token');
+          await ChatStorageService.clearAll();
+          await storage.remove('bunker_user_id');
+          await AsyncStorage.removeItem('p2p_contacts');
+          await AsyncStorage.removeItem('secret_contacts');
+          await AsyncStorage.removeItem('character_customizations');
           navigation.replace('Login');
         },
       },

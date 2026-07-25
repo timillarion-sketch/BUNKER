@@ -8,7 +8,7 @@ import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useAccent } from '../core/AccentContext';
 import { sendMessage } from '../services/AiCharacterService';
 import { ChatStorageService } from '../services/ChatStorageService';
-import { api } from '@/core';
+import { api, storage } from '@/core';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 const CHARACTER_GREETINGS: Record<string, string> = {
@@ -75,19 +75,52 @@ export default function AiChatScreen({ route, navigation }: Props) {
       },
     ];
 
-    ChatStorageService.getMessages(characterId).then(saved => {
-      if (saved.length > 0) {
-        const history: AiChatMessage[] = saved.map(m => ({
-          id: m.id,
+    (async () => {
+      const userId = await storage.get('bunker_user_id');
+      if (!userId) {
+        setMessages(initial);
+        return;
+      }
+      try {
+        interface ServerMessage {
+          id: number;
+          role: 'user' | 'assistant';
+          content: string;
+          createdAt: string;
+        }
+        const res = await api.get<{ messages: ServerMessage[] }>(`/api/messages/${characterId}`);
+        const history: AiChatMessage[] = (res.messages || []).map(m => ({
+          id: String(m.id),
           role: m.role,
           content: m.content,
-          createdAt: m.createdAt,
+          createdAt: new Date(m.createdAt).getTime(),
         }));
+        await ChatStorageService.clearHistory(userId, characterId);
+        for (const msg of history) {
+          await ChatStorageService.saveMessage(userId, {
+            id: msg.id,
+            characterId,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            createdAt: msg.createdAt,
+          });
+        }
         setMessages([...initial, ...history]);
-      } else {
-        setMessages(initial);
+      } catch {
+        const saved = await ChatStorageService.getMessages(userId, characterId);
+        if (saved.length > 0) {
+          const history: AiChatMessage[] = saved.map(m => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            createdAt: m.createdAt,
+          }));
+          setMessages([...initial, ...history]);
+        } else {
+          setMessages(initial);
+        }
       }
-    });
+    })();
   }, [characterId]);
 
   const handleClearChat = useCallback(() => {
@@ -101,8 +134,11 @@ export default function AiChatScreen({ route, navigation }: Props) {
           style: 'destructive',
           onPress: async () => {
             try {
+              const userId = await storage.get('bunker_user_id');
               await api.delete(`/api/messages/${characterId}`);
-              await ChatStorageService.clearHistory(characterId);
+              if (userId) {
+                await ChatStorageService.clearHistory(userId, characterId);
+              }
               const greeting = getGreeting(characterId, characterName, systemPrompt);
               setMessages([{
                 id: 'greeting',
@@ -169,20 +205,23 @@ export default function AiChatScreen({ route, navigation }: Props) {
       };
       setMessages(prev => [...prev, assistantMsg]);
 
-      ChatStorageService.saveMessage({
-        id: userMsg.id,
-        characterId,
-        role: 'user',
-        content: userMsg.content,
-        createdAt: userMsg.createdAt,
-      });
-      ChatStorageService.saveMessage({
-        id: assistantMsg.id,
-        characterId,
-        role: 'assistant',
-        content: assistantMsg.content,
-        createdAt: assistantMsg.createdAt,
-      });
+      const userId = await storage.get('bunker_user_id');
+      if (userId) {
+        ChatStorageService.saveMessage(userId, {
+          id: userMsg.id,
+          characterId,
+          role: 'user',
+          content: userMsg.content,
+          createdAt: userMsg.createdAt,
+        });
+        ChatStorageService.saveMessage(userId, {
+          id: assistantMsg.id,
+          characterId,
+          role: 'assistant',
+          content: assistantMsg.content,
+          createdAt: assistantMsg.createdAt,
+        });
+      }
     } catch {
       setError('Ошибка связи с сервером');
     } finally {

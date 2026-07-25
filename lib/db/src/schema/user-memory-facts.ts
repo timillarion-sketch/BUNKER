@@ -6,6 +6,7 @@ export const userMemoryFactsTable = pgTable("user_memory_facts", {
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   scope: text("scope", { enum: ["personal", "global"] }).notNull(),
   characterId: text("character_id"),
+  sourceCharacterId: text("source_character_id"),
   fact: text("fact").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

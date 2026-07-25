@@ -1,9 +1,55 @@
 import { Router, type IRouter, type Response } from "express";
-import { db, memorySettingsTable, userMemoryFactsTable } from "@workspace/db";
+import { db, memorySettingsTable, userMemoryFactsTable, characterMemorySettingsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 
 const router: IRouter = Router();
+
+const normalize = (s: string) => s.trim().toLocaleLowerCase();
+
+async function mergeCharacterFactsToGlobal(
+  userId: number,
+  characterId: string,
+): Promise<number> {
+  const personalFacts = await db
+    .select({ fact: userMemoryFactsTable.fact })
+    .from(userMemoryFactsTable)
+    .where(
+      and(
+        eq(userMemoryFactsTable.userId, userId),
+        eq(userMemoryFactsTable.scope, "personal"),
+        eq(userMemoryFactsTable.characterId, characterId),
+      ),
+    );
+
+  const existingGlobal = await db
+    .select({ fact: userMemoryFactsTable.fact })
+    .from(userMemoryFactsTable)
+    .where(
+      and(
+        eq(userMemoryFactsTable.userId, userId),
+        eq(userMemoryFactsTable.scope, "global"),
+      ),
+    );
+
+  const globalTexts = new Set(existingGlobal.map(f => normalize(f.fact)));
+  let merged = 0;
+
+  for (const pf of personalFacts) {
+    if (!globalTexts.has(normalize(pf.fact))) {
+      await db.insert(userMemoryFactsTable).values({
+        userId,
+        scope: "global",
+        characterId: null,
+        sourceCharacterId: characterId,
+        fact: pf.fact,
+      });
+      merged++;
+    }
+  }
+
+  return merged;
+}
 
 router.get("/memory/settings", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = Number(req.userId);
@@ -139,9 +185,28 @@ router.post("/memory/facts", requireAuth, async (req: AuthenticatedRequest, res:
         userId,
         scope,
         characterId: scope === "personal" ? characterId : null,
+        sourceCharacterId: scope === "personal" ? characterId : null,
         fact,
       })
       .returning();
+
+    if (scope === "personal" && characterId) {
+      const setting = await db
+        .select({ sharesMemoryWithGlobal: characterMemorySettingsTable.sharesMemoryWithGlobal })
+        .from(characterMemorySettingsTable)
+        .where(
+          and(
+            eq(characterMemorySettingsTable.userId, userId),
+            eq(characterMemorySettingsTable.characterId, characterId),
+          ),
+        )
+        .limit(1)
+        .then(r => r[0] ?? null);
+
+      if (setting?.sharesMemoryWithGlobal) {
+        await mergeCharacterFactsToGlobal(userId, characterId);
+      }
+    }
 
     res.status(201).json(entry);
   } catch {
@@ -185,48 +250,77 @@ router.delete("/memory/facts/:id", requireAuth, async (req: AuthenticatedRequest
   }
 });
 
-router.post("/memory/merge", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.get("/memory/character-settings", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = Number(req.userId);
 
   try {
-    const personalFacts = await db
-      .select({ fact: userMemoryFactsTable.fact })
-      .from(userMemoryFactsTable)
+    const settings = await db
+      .select()
+      .from(characterMemorySettingsTable)
+      .where(eq(characterMemorySettingsTable.userId, userId));
+
+    res.json({ settings });
+  } catch {
+    res.status(500).json({ error: "Не удалось загрузить настройки персонажей" });
+  }
+});
+
+router.patch("/memory/character-settings/:characterId", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = Number(req.userId);
+  const characterId = req.params.characterId as string;
+  const { sharesMemoryWithGlobal } = req.body as { sharesMemoryWithGlobal?: boolean };
+
+  if (typeof sharesMemoryWithGlobal !== "boolean") {
+    res.status(400).json({ error: "Требуется поле sharesMemoryWithGlobal (boolean)" });
+    return;
+  }
+
+  try {
+    const [existing] = await db
+      .select()
+      .from(characterMemorySettingsTable)
       .where(
         and(
-          eq(userMemoryFactsTable.userId, userId),
-          eq(userMemoryFactsTable.scope, "personal"),
+          eq(characterMemorySettingsTable.userId, userId),
+          eq(characterMemorySettingsTable.characterId, characterId),
         ),
-      );
+      )
+      .limit(1);
 
-    const existingGlobal = await db
-      .select({ fact: userMemoryFactsTable.fact })
-      .from(userMemoryFactsTable)
-      .where(
-        and(
-          eq(userMemoryFactsTable.userId, userId),
-          eq(userMemoryFactsTable.scope, "global"),
-        ),
-      );
-
-    const globalTexts = new Set(existingGlobal.map(f => f.fact));
-    let merged = 0;
-
-    for (const pf of personalFacts) {
-      if (!globalTexts.has(pf.fact)) {
-        await db.insert(userMemoryFactsTable).values({
-          userId,
-          scope: "global",
-          characterId: null,
-          fact: pf.fact,
-        });
-        merged++;
-      }
+    if (existing) {
+      await db
+        .update(characterMemorySettingsTable)
+        .set({ sharesMemoryWithGlobal })
+        .where(
+          and(
+            eq(characterMemorySettingsTable.userId, userId),
+            eq(characterMemorySettingsTable.characterId, characterId),
+          ),
+        );
+    } else {
+      await db
+        .insert(characterMemorySettingsTable)
+        .values({ userId, characterId, sharesMemoryWithGlobal });
     }
 
-    res.json({ merged });
+    if (sharesMemoryWithGlobal) {
+      await mergeCharacterFactsToGlobal(userId, characterId);
+    }
+
+    const [updated] = await db
+      .select()
+      .from(characterMemorySettingsTable)
+      .where(
+        and(
+          eq(characterMemorySettingsTable.userId, userId),
+          eq(characterMemorySettingsTable.characterId, characterId),
+        ),
+      )
+      .limit(1);
+
+    res.json(updated);
   } catch {
-    res.status(500).json({ error: "Не удалось объединить память" });
+    res.status(500).json({ error: "Не удалось обновить настройки персонажа" });
   }
 });
 
@@ -244,14 +338,14 @@ router.get("/memory/facts/counts", requireAuth, async (req: AuthenticatedRequest
         ),
       );
 
-    const counts: Record<string, number> = {};
+    const personalCounts: Record<string, number> = {};
     for (const f of personalFacts) {
       const cid = f.characterId ?? "unknown";
-      counts[cid] = (counts[cid] || 0) + 1;
+      personalCounts[cid] = (personalCounts[cid] || 0) + 1;
     }
 
-    const globalCount = await db
-      .select({ id: userMemoryFactsTable.id })
+    const globalFacts = await db
+      .select({ sourceCharacterId: userMemoryFactsTable.sourceCharacterId })
       .from(userMemoryFactsTable)
       .where(
         and(
@@ -260,7 +354,15 @@ router.get("/memory/facts/counts", requireAuth, async (req: AuthenticatedRequest
         ),
       );
 
-    res.json({ perCharacter: counts, globalTotal: globalCount.length });
+    const globalCounts: Record<string, number> = {};
+    let globalTotal = 0;
+    for (const f of globalFacts) {
+      globalTotal++;
+      const cid = f.sourceCharacterId ?? "_orphan";
+      globalCounts[cid] = (globalCounts[cid] || 0) + 1;
+    }
+
+    res.json({ perCharacter: personalCounts, perCharacterGlobal: globalCounts, globalTotal });
   } catch {
     res.status(500).json({ error: "Не удалось загрузить счётчики" });
   }
