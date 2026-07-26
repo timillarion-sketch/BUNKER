@@ -58,7 +58,7 @@ export default function AiChatScreen({ route, navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    const greeting = getGreeting(characterId, characterName, systemPrompt);
+    const greeting = getGreeting(characterId, characterName);
     const initial: AiChatMessage[] = [
       {
         id: 'greeting',

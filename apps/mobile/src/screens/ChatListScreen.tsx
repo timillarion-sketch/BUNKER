@@ -265,6 +265,7 @@ export default function ChatListScreen({ navigation }: Props) {
         roomId,
         contactId: result.contactId,
         contactStatus: 'pending',
+        isRequester: true,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Не удалось инициировать канал';
