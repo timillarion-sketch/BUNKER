@@ -9,6 +9,7 @@ import { broadcastSse } from "../lib/sse-manager";
 import { getEnv } from "../lib/env";
 import { buildMemoryContext, formatMemoryContext } from "../lib/ai/memoryManager";
 import { getNextModel, getNextApiKey, markKeyCooldown } from "../lib/ai/modelRouter";
+import { loadCharacter } from "../lib/ai/characterLoader";
 
 const router: IRouter = Router();
 
@@ -76,7 +77,13 @@ aiQueue.setHandler(async (task) => {
     throw new AiQueueError("LIMIT", "Достигнут дневной лимит сообщений. Попробуйте завтра.");
   }
 
-  const systemMsg = task.systemPrompt || "You are a helpful assistant.";
+  let systemMsg = "You are a helpful assistant.";
+  try {
+    const charData = loadCharacter(task.characterId);
+    systemMsg = charData.prompt;
+  } catch (err) {
+    logger.error({ err, characterId: task.characterId }, "Failed to load character prompt, using fallback");
+  }
   const tier = CHARACTER_TIER[task.characterId] || "fast";
 
   const memoryCtx = await buildMemoryContext(Number(task.userId), task.characterId);
@@ -247,7 +254,7 @@ aiQueue.setHandler(async (task) => {
 });
 
 router.post("/ai/chat", requireAuth, aiLimiter, async (req: AuthenticatedRequest, res: Response) => {
-  const { messages, message: singleMessage, characterId, systemPrompt: bodySystemPrompt } = req.body;
+  const { messages, message: singleMessage, characterId } = req.body;
 
   logger.info({ userId: req.userId, characterId }, "AI chat request received");
 
@@ -257,16 +264,12 @@ router.post("/ai/chat", requireAuth, aiLimiter, async (req: AuthenticatedRequest
   }
 
   let message: string;
-  let systemPrompt = bodySystemPrompt;
 
   if (Array.isArray(messages) && messages.length > 0) {
-    const first = messages[0];
-    if (!systemPrompt && first?.role === "system" && typeof first?.content === "string") {
-      systemPrompt = first.content;
-    }
-    const last = messages[messages.length - 1];
+    const userMessages = messages.filter((m: { role: string }) => m.role !== "system");
+    const last = userMessages[userMessages.length - 1];
     message = typeof last?.content === "string" ? last.content : "";
-    logger.info({ messagesCount: messages.length, lastRole: last?.role, hasSystemPrompt: !!systemPrompt }, "Extracted message from messages array");
+    logger.info({ messagesCount: messages.length, lastRole: last?.role }, "Extracted message from messages array");
   } else if (typeof singleMessage === "string") {
     message = singleMessage;
     logger.info("Using single message field");
@@ -291,7 +294,6 @@ router.post("/ai/chat", requireAuth, aiLimiter, async (req: AuthenticatedRequest
       userId: req.userId!,
       characterId,
       message,
-      systemPrompt,
     });
 
     logger.info({ userId: req.userId, characterId }, "AI chat reply sent");

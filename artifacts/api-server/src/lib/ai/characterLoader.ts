@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const DATA_DIR = join(import.meta.dirname, "..", "data");
+const CACHE_TTL = 15 * 60 * 1000;
 
 interface CharacterMeta {
   id: string;
@@ -16,7 +17,11 @@ interface CharacterData {
   prompt: string;
 }
 
-const cache = new Map<string, CharacterData>();
+interface CacheEntry extends CharacterData {
+  loadedAt: number;
+}
+
+const cache = new Map<string, CacheEntry>();
 
 function resolveDataPath(...segments: string[]): string {
   return join(DATA_DIR, ...segments);
@@ -24,7 +29,9 @@ function resolveDataPath(...segments: string[]): string {
 
 export function loadCharacter(characterId: string): CharacterData {
   const cached = cache.get(characterId);
-  if (cached) return cached;
+  if (cached && Date.now() - cached.loadedAt < CACHE_TTL) {
+    return cached;
+  }
 
   const metaPath = resolveDataPath("characters", `${characterId}.json`);
   if (!existsSync(metaPath)) {
@@ -34,19 +41,22 @@ export function loadCharacter(characterId: string): CharacterData {
   const metaRaw = readFileSync(metaPath, "utf-8");
   const meta: CharacterMeta = JSON.parse(metaRaw);
 
-  if (!meta.prompt_file) {
-    throw new Error(`Character ${characterId} has no prompt_file`);
+  const basePath = resolveDataPath("prompts", `${characterId}_base.md`);
+  const advancedPath = resolveDataPath("prompts", `${characterId}_advanced.md`);
+
+  if (!existsSync(basePath)) {
+    throw new Error(`Base prompt not found for character: ${characterId}`);
+  }
+  if (!existsSync(advancedPath)) {
+    throw new Error(`Advanced prompt not found for character: ${characterId}`);
   }
 
-  const promptPath = resolveDataPath("prompts", meta.prompt_file);
-  if (!existsSync(promptPath)) {
-    throw new Error(`Prompt file not found: ${meta.prompt_file}`);
-  }
-
-  const prompt = readFileSync(promptPath, "utf-8");
+  const basePrompt = readFileSync(basePath, "utf-8");
+  const advancedPrompt = readFileSync(advancedPath, "utf-8");
+  const prompt = basePrompt + "\n\n" + advancedPrompt;
 
   const data: CharacterData = { meta, prompt };
-  cache.set(characterId, data);
+  cache.set(characterId, { ...data, loadedAt: Date.now() });
   return data;
 }
 

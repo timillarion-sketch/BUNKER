@@ -14,23 +14,14 @@ export async function sendMessage(
   characterId: string,
   history: AiMessage[],
   userText: string,
-  systemPrompt?: string,
 ): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
-    if (systemPrompt) {
-      systemPrompt += "\n\nCRITICAL DIRECTIVE: You must respond STRICTLY in the exact language the user writes in. Never mix languages. If the user writes in Russian, respond entirely in Russian. Maintain your persona, but language consistency is your absolute highest priority.";
-    }
-
     const contextMessages: AiMessage[] = [];
 
-    if (systemPrompt) {
-      contextMessages.push({ role: 'system', content: systemPrompt });
-    }
-
-    const sliced = history.slice(-(CONTEXT_WINDOW - (systemPrompt ? 1 : 0)));
+    const sliced = history.slice(-CONTEXT_WINDOW);
     contextMessages.push(...sliced);
     contextMessages.push({ role: 'user', content: userText });
 

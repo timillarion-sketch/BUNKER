@@ -22,15 +22,8 @@ const CHARACTER_GREETINGS: Record<string, string> = {
     'Готов к продакшену? Садись, придумаем контент, который взорвёт ленту. Погнали.',
 };
 
-function getGreeting(characterId: string, characterName: string, systemPrompt?: string): string {
-  if (systemPrompt) {
-    const firstLine = systemPrompt.split('\n')[0].trim();
-    if (firstLine.length > 0 && firstLine.length < 120) {
-      return firstLine;
-    }
-    return `Чат с ${characterName} открыт. Чем могу помочь?`;
-  }
-  return CHARACTER_GREETINGS[characterId] || 'Чат открыт. Чем могу помочь?';
+function getGreeting(characterId: string, characterName: string): string {
+  return CHARACTER_GREETINGS[characterId] || `Чат с ${characterName} открыт. Чем могу помочь?`;
 }
 
 interface AiChatMessage {
@@ -42,13 +35,13 @@ interface AiChatMessage {
 
 type PersonalStackParamList = {
   Lobby: undefined;
-  AiChat: { characterId: string; characterName: string; characterAvatar: string; systemPrompt?: string };
+  AiChat: { characterId: string; characterName: string; characterAvatar: string };
 };
 
 type Props = NativeStackScreenProps<PersonalStackParamList, 'AiChat'>;
 
 export default function AiChatScreen({ route, navigation }: Props) {
-  const { characterId, characterName, characterAvatar, systemPrompt } = route.params;
+  const { characterId, characterName, characterAvatar } = route.params;
   const insets = useSafeAreaInsets();
   const { accent } = useAccent();
   const [messages, setMessages] = useState<AiChatMessage[]>([]);
@@ -139,7 +132,7 @@ export default function AiChatScreen({ route, navigation }: Props) {
               if (userId) {
                 await ChatStorageService.clearHistory(userId, characterId);
               }
-              const greeting = getGreeting(characterId, characterName, systemPrompt);
+    const greeting = getGreeting(characterId, characterName);
               setMessages([{
                 id: 'greeting',
                 role: 'greeting',
@@ -153,7 +146,7 @@ export default function AiChatScreen({ route, navigation }: Props) {
         },
       ],
     );
-  }, [characterId, characterName, systemPrompt]);
+  }, [characterId, characterName]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -195,7 +188,7 @@ export default function AiChatScreen({ route, navigation }: Props) {
         .filter(m => m.role !== 'greeting')
         .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-      const reply = await sendMessage(characterId, history, text, systemPrompt);
+      const reply = await sendMessage(characterId, history, text);
 
       const assistantMsg: AiChatMessage = {
         id: crypto.randomUUID(),

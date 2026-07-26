@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import { api } from '@/core';
-import { connectSse, onContactRequest, onChatDeleted, deleteChat, ensureBnkrId } from '../services/p2pService';
+import { connectSse, onContactRequest, onChatDeleted, deleteChat, ensureBnkrId, initiateChannel, fetchServerContacts, type ServerContact } from '../services/p2pService';
 import { isValidBnkrId } from '../core/bnkr';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import SecretPinScreen from './SecretPinScreen';
@@ -17,7 +17,7 @@ import SecretPinScreen from './SecretPinScreen';
 type ChatStackParamList = {
   ChatList: undefined;
   Chat: { chatId: string; title: string };
-  UserChat: { peerId: string; peerName?: string; roomId: string; contactId?: number; contactStatus?: 'accepted' | 'pending' };
+  UserChat: { peerId: string; peerName?: string; roomId: string; contactId?: number; contactStatus?: 'accepted' | 'pending'; isRequester?: boolean };
   SecretArchive: undefined;
 };
 
@@ -42,6 +42,26 @@ interface Contact {
   updatedAt: number;
   contactDbId?: number;
   contactStatus?: 'accepted' | 'pending';
+  isRequester?: boolean;
+  channelStatus?: 'outgoing_request' | 'incoming_request' | 'accepted';
+}
+
+function createServerContact(sc: ServerContact): Contact {
+  const isPending = sc.status === 'pending';
+  return {
+    id: sc.peerBunkerId || '',
+    name: sc.peerDisplayName || sc.peerBunkerId || 'Unknown',
+    emoji: '💬',
+    color: '#00F0FF',
+    roomId: `dm_server_${sc.peerBunkerId}`,
+    updatedAt: Date.now(),
+    contactStatus: sc.status as 'accepted' | 'pending',
+    contactDbId: sc.id,
+    isRequester: sc.isRequester,
+    channelStatus: isPending
+      ? (sc.isRequester ? 'outgoing_request' : 'incoming_request')
+      : 'accepted',
+  };
 }
 
 export default function ChatListScreen({ navigation }: Props) {
@@ -78,16 +98,61 @@ export default function ChatListScreen({ navigation }: Props) {
   useEffect(() => { fetchChats(); }, []);
 
   useEffect(() => {
-    AsyncStorage.getItem('p2p_contacts').then(data => {
-      if (data) {
-        const all: Contact[] = JSON.parse(data);
-        const valid = all.filter(c => isValidBnkrId(c.id));
-        setContacts(valid);
-        if (valid.length !== all.length) {
-          AsyncStorage.setItem('p2p_contacts', JSON.stringify(valid));
+    (async () => {
+      // 1. Load local contacts first — instant UI
+      const localRaw = await AsyncStorage.getItem('p2p_contacts');
+      let localContacts: Contact[] = [];
+      if (localRaw) {
+        const all: Contact[] = JSON.parse(localRaw);
+        localContacts = all.filter(c => isValidBnkrId(c.id));
+        if (localContacts.length !== all.length) {
+          await AsyncStorage.setItem('p2p_contacts', JSON.stringify(localContacts));
         }
+        setContacts(localContacts);
       }
-    });
+
+      // 2. Fetch server contacts in background and merge
+      try {
+        const serverContacts = await fetchServerContacts();
+        if (serverContacts.length === 0) return;
+
+        const localMap = new Map(localContacts.map(c => [c.id, c]));
+        let changed = false;
+
+        for (const sc of serverContacts) {
+          if (sc.status === 'blocked') continue;
+          const bunkerId = sc.peerBunkerId;
+          if (!bunkerId || !isValidBnkrId(bunkerId)) continue;
+
+          const existing = localMap.get(bunkerId);
+          if (existing) {
+            if (existing.contactStatus !== sc.status || existing.isRequester !== sc.isRequester) {
+              localMap.set(bunkerId, {
+                ...existing,
+                contactStatus: sc.status as 'accepted' | 'pending',
+                isRequester: sc.isRequester,
+                contactDbId: sc.id,
+                channelStatus: sc.status === 'pending'
+                  ? (sc.isRequester ? 'outgoing_request' : 'incoming_request')
+                  : 'accepted',
+              });
+              changed = true;
+            }
+          } else {
+            localMap.set(bunkerId, createServerContact(sc));
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          const merged = Array.from(localMap.values());
+          await AsyncStorage.setItem('p2p_contacts', JSON.stringify(merged));
+          setContacts(merged);
+        }
+      } catch {
+        // Background sync — fail silently
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -114,6 +179,8 @@ export default function ChatListScreen({ navigation }: Props) {
             updatedAt: Date.now(),
             contactStatus: 'pending',
             contactDbId: data.contactId,
+            isRequester: false,
+            channelStatus: 'incoming_request',
           });
         }
       } catch {}
@@ -170,25 +237,41 @@ export default function ChatListScreen({ navigation }: Props) {
       return;
     }
 
-    const roomId = `dm_${Date.now()}`;
-    const newContact: Contact = {
-      id: trimmed,
-      name: contactName.trim() || trimmed,
-      emoji: '💬',
-      color: '#00F0FF',
-      roomId,
-      updatedAt: Date.now(),
-    };
-    await saveContact(newContact);
-    setModalVisible(false);
-    setTargetId('');
-    setContactName('');
+    setSearching(true);
 
-    navigation.navigate('UserChat', {
-      peerId: trimmed,
-      peerName: newContact.name,
-      roomId,
-    });
+    try {
+      const result = await initiateChannel(trimmed);
+      const roomId = `dm_${Date.now()}`;
+      const newContact: Contact = {
+        id: trimmed,
+        name: contactName.trim() || trimmed,
+        emoji: '💬',
+        color: '#00F0FF',
+        roomId,
+        updatedAt: Date.now(),
+        contactStatus: 'pending',
+        contactDbId: result.contactId,
+        isRequester: true,
+        channelStatus: 'outgoing_request',
+      };
+      await saveContact(newContact);
+      setModalVisible(false);
+      setTargetId('');
+      setContactName('');
+
+      navigation.navigate('UserChat', {
+        peerId: trimmed,
+        peerName: newContact.name,
+        roomId,
+        contactId: result.contactId,
+        contactStatus: 'pending',
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Не удалось инициировать канал';
+      Alert.alert('Ошибка', msg);
+    } finally {
+      setSearching(false);
+    }
   };
 
   const handleAcceptContact = async () => {
@@ -205,6 +288,8 @@ export default function ChatListScreen({ navigation }: Props) {
         updatedAt: Date.now(),
         contactStatus: 'accepted',
         contactDbId: pendingRequest.contactId,
+        isRequester: false,
+        channelStatus: 'accepted',
       };
       await saveContact(newContact);
       setPendingRequest(null);
@@ -355,6 +440,7 @@ export default function ChatListScreen({ navigation }: Props) {
                 roomId: item.roomId,
                 contactId: item.contactDbId,
                 contactStatus: item.contactStatus,
+                isRequester: item.isRequester,
               })}
               onLongPress={() => handleDeleteChat(item)}
               style={[styles.contactRow, { borderLeftColor: item.color, borderLeftWidth: 3 }]}
@@ -363,10 +449,13 @@ export default function ChatListScreen({ navigation }: Props) {
               <View style={styles.contactInfo}>
                 <Text style={styles.contactName}>{item.name}</Text>
                 <Text style={styles.contactId}>{item.id}</Text>
-                {item.contactStatus === 'pending' && (
-                  <Text style={[styles.contactLast, { color: '#ffb400' }]}>⏳ Ожидает подтверждения</Text>
+                {item.channelStatus === 'outgoing_request' && (
+                  <Text style={[styles.contactLast, { color: '#ffb400' }]}>⏳ Запрос отправлен</Text>
                 )}
-                {item.contactStatus !== 'pending' && item.lastMessage && (
+                {item.channelStatus === 'incoming_request' && (
+                  <Text style={[styles.contactLast, { color: '#ffb400' }]}>✉️ Входящий запрос</Text>
+                )}
+                {item.contactStatus === 'accepted' && item.lastMessage && (
                   <Text style={styles.contactLast} numberOfLines={1}>{item.lastMessage}</Text>
                 )}
               </View>

@@ -96,6 +96,29 @@ export async function deleteChat(peerId: string, mode: "self" | "both"): Promise
   await api.delete(`/api/p2p/history/${peerId}?mode=${mode}`);
 }
 
+export async function initiateChannel(receiverId: string): Promise<{
+  contactId: number;
+  status: string;
+  isRequester: boolean;
+}> {
+  return api.post("/api/p2p/initiate", { receiverId });
+}
+
+export interface ServerContact {
+  id: number;
+  requesterId: number;
+  addresseeId: number;
+  status: "pending" | "accepted" | "blocked";
+  createdAt: string;
+  peerBunkerId: string | null;
+  peerDisplayName: string;
+  isRequester: boolean;
+}
+
+export async function fetchServerContacts(): Promise<ServerContact[]> {
+  return api.get<ServerContact[]>("/api/contacts");
+}
+
 export function onChatDeleted(handler: (data: string | null) => void): () => void {
   return sseConnection.on("chat_deleted", handler);
 }

@@ -32,13 +32,14 @@ interface P2PMessage {
 export default function UserChatScreen({
   route, navigation
 }: any) {
-  const { peerId, peerName, roomId, mode, contactId: navContactId, contactStatus: navContactStatus } = route.params as {
+  const { peerId, peerName, roomId, mode, contactId: navContactId, contactStatus: navContactStatus, isRequester: navIsRequester } = route.params as {
     peerId: string;
     peerName?: string;
     roomId: string;
     mode?: 'hidden' | 'incognito';
     contactId?: number;
     contactStatus?: 'accepted' | 'pending';
+    isRequester?: boolean;
   };
   const insets = useSafeAreaInsets();
   const { accent } = useAccent();
@@ -49,7 +50,7 @@ export default function UserChatScreen({
   const [sending, setSending] = useState(false);
   const [contactStatus, setContactStatus] = useState<ContactStatus | null>(() => {
     if (navContactStatus && typeof navContactId === 'number') {
-      return { id: navContactId, status: navContactStatus, isRequester: navContactStatus === 'pending' ? false : false };
+      return { id: navContactId, status: navContactStatus, isRequester: navIsRequester ?? false };
     }
     return null;
   });
@@ -171,7 +172,12 @@ export default function UserChatScreen({
       const serverMsg = await sendP2pMessage(peerId, text);
 
       if (serverMsg.contactPending) {
-        setContactStatus({ id: serverMsg.contactId!, status: "pending", isRequester: true });
+        setContactStatus(prev => {
+          if (prev) {
+            return { ...prev, id: serverMsg.contactId!, status: "pending" };
+          }
+          return { id: serverMsg.contactId!, status: "pending", isRequester: true };
+        });
       }
 
       setMessages(prev =>

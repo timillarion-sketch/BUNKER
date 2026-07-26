@@ -2,7 +2,7 @@ import { Router, type IRouter, type Response } from "express";
 import { z } from "zod";
 import { db, contactsTable, usersTable } from "@workspace/db";
 import { AddContactBody } from "@workspace/api-zod";
-import { eq, or, and } from "drizzle-orm";
+import { eq, or, and, inArray } from "drizzle-orm";
 import { broadcastSse } from "../lib/sse-manager";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 
@@ -10,16 +10,48 @@ const router: IRouter = Router();
 
 router.get("/contacts", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const userId = Number(req.userId);
+
     const contacts = await db
       .select()
       .from(contactsTable)
       .where(
         or(
-          eq(contactsTable.requesterId, Number(req.userId)),
-          eq(contactsTable.addresseeId, Number(req.userId)),
+          eq(contactsTable.requesterId, userId),
+          eq(contactsTable.addresseeId, userId),
         ),
       );
-    res.json(contacts);
+
+    const peerIds = contacts.map(c =>
+      c.requesterId === userId ? c.addresseeId : c.requesterId,
+    );
+
+    const peers = peerIds.length > 0
+      ? await db
+          .select({
+            id: usersTable.id,
+            bunkerId: usersTable.bunkerId,
+            displayName: usersTable.displayName,
+            username: usersTable.username,
+          })
+          .from(usersTable)
+          .where(inArray(usersTable.id, peerIds))
+      : [];
+
+    const peerMap = new Map(peers.map(p => [p.id, p]));
+
+    const enriched = contacts.map(c => {
+      const peerId = c.requesterId === userId ? c.addresseeId : c.requesterId;
+      const peer = peerMap.get(peerId);
+      return {
+        ...c,
+        peerBunkerId: peer?.bunkerId || null,
+        peerDisplayName: peer?.displayName || peer?.username || "Unknown",
+        isRequester: c.requesterId === userId,
+      };
+    });
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: "Не удалось загрузить контакты" });
   }

@@ -15,7 +15,6 @@ interface CharacterCard {
   emoji: string;
   description: string;
   color: string;
-  systemPrompt?: string;
 }
 
 const DEFAULT_CHARACTERS: CharacterCard[] = [
@@ -74,7 +73,6 @@ export default function LobbyScreen() {
         emoji: N8N_EMOJIS[idx % N8N_EMOJIS.length],
         description: item.text.length > 80 ? item.text.slice(0, 80) + '…' : item.text,
         color: CARD_COLORS[idx % CARD_COLORS.length],
-        systemPrompt: item.text,
       }));
       setCharacters(n8nChars);
     } else {
@@ -117,7 +115,6 @@ export default function LobbyScreen() {
       characterId: character.id,
       characterName: character.name,
       characterAvatar: character.emoji,
-      systemPrompt: character.systemPrompt,
     });
   };
 
@@ -227,7 +224,7 @@ export default function LobbyScreen() {
           <TouchableOpacity
             key={char.id}
             onPress={() => openChat(char)}
-            onLongPress={() => !char.systemPrompt && setEditingId(char.id)}
+            onLongPress={() => !char.id.startsWith('n8n_') && setEditingId(char.id)}
             delayLongPress={600}
             style={[styles.card, { borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1 }]}
           >
@@ -256,7 +253,7 @@ export default function LobbyScreen() {
               {char.description}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-              {!char.systemPrompt && (
+              {!char.id.startsWith('n8n_') && (
                 <Text style={[styles.editHint, { flex: 1, color: (char.color || accent) + '80', marginTop: 0 }]}>
                   удерживай для настройки
                 </Text>
@@ -354,7 +351,7 @@ export default function LobbyScreen() {
         </View>
       </Modal>
 
-      {editingChar && !editingChar.systemPrompt && (
+      {editingChar && !editingChar.id.startsWith('n8n_') && (
         <Modal
           visible={true}
           transparent

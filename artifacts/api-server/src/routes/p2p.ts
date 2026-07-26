@@ -118,6 +118,105 @@ router.post("/p2p/lookup", requireAuth, async (req: AuthenticatedRequest, res: R
   }
 });
 
+const initiateSchema = z.object({
+  receiverId: bunkerIdSchema,
+});
+
+router.post("/p2p/initiate", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = Number(req.userId);
+
+  const parsed = initiateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.errors[0].message });
+    return;
+  }
+
+  const { receiverId } = parsed.data;
+
+  try {
+    const [user] = await db
+      .select({ bunkerId: usersTable.bunkerId })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    const senderId = user?.bunkerId;
+    if (!senderId) {
+      res.status(400).json({ error: "Сначала зарегистрируйте BNKR-ID" });
+      return;
+    }
+
+    const [recipient] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.bunkerId, receiverId))
+      .limit(1);
+
+    if (!recipient) {
+      res.status(404).json({ error: "Получатель не найден" });
+      return;
+    }
+
+    const [existingContact] = await db
+      .select()
+      .from(contactsTable)
+      .where(
+        or(
+          and(eq(contactsTable.requesterId, userId), eq(contactsTable.addresseeId, recipient.id)),
+          and(eq(contactsTable.requesterId, recipient.id), eq(contactsTable.addresseeId, userId)),
+        ),
+      )
+      .limit(1);
+
+    if (existingContact?.status === "blocked") {
+      const isBlockedByRecipient = existingContact.addresseeId === recipient.id && existingContact.requesterId === userId;
+      if (isBlockedByRecipient) {
+        res.status(403).json({ error: "Вы заблокированы этим пользователем" });
+        return;
+      }
+    }
+
+    if (existingContact) {
+      res.json({
+        contactId: existingContact.id,
+        status: existingContact.status,
+        isRequester: existingContact.requesterId === userId,
+      });
+      return;
+    }
+
+    const [contact] = await db
+      .insert(contactsTable)
+      .values({ requesterId: userId, addresseeId: recipient.id, status: "pending" })
+      .returning();
+
+    try {
+      await sendSseToUser(String(recipient.id), "contact_request", {
+        fromBunkerId: senderId,
+        fromUserId: userId,
+        contactId: contact.id,
+      });
+    } catch (sseErr) {
+      logger.error({ err: sseErr, receiverId: recipient.id }, "sendSseToUser for initiate failed");
+    }
+
+    publish("contact_request", {
+      fromBunkerId: senderId,
+      fromUserId: userId,
+      contactId: contact.id,
+    });
+
+    res.json({
+      contactId: contact.id,
+      status: contact.status,
+      isRequester: true,
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to initiate channel");
+    res.status(500).json({ error: "Не удалось инициировать канал" });
+  }
+});
+
 router.post("/p2p/send", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = Number(req.userId);
 
