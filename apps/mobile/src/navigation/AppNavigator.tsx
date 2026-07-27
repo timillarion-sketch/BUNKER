@@ -6,6 +6,7 @@ import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import FloatingTabBar from '../components/FloatingTabBar';
 
+import AuthProvider, { useAuth } from '../core/AuthProvider';
 import LoginScreen from '../screens/LoginScreen';
 import LobbyScreen from '../screens/LobbyScreen';
 import BrowserScreen from '../screens/BrowserScreen';
@@ -118,15 +119,30 @@ function MainTabs() {
   );
 }
 
-export default function AppNavigator() {
+function MainNavigator() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
-        <RootStack.Screen name="Login" component={LoginScreen} />
-        <RootStack.Screen name="MainTabs" component={MainTabs} />
-        <RootStack.Screen name="SurvivalMenu" component={SurvivalMenuScreen} options={{ headerShown: false }} />
-        <RootStack.Screen name="AdminTemplates" component={AdminTemplatesScreen} options={{ headerShown: false }} />
+        {isAuthenticated ? (
+          <>
+            <RootStack.Screen name="MainTabs" component={MainTabs} />
+            <RootStack.Screen name="SurvivalMenu" component={SurvivalMenuScreen} options={{ headerShown: false }} />
+            <RootStack.Screen name="AdminTemplates" component={AdminTemplatesScreen} options={{ headerShown: false }} />
+          </>
+        ) : (
+          <RootStack.Screen name="Login" component={LoginScreen} />
+        )}
       </RootStack.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function AppNavigator() {
+  return (
+    <AuthProvider>
+      <MainNavigator />
+    </AuthProvider>
   );
 }

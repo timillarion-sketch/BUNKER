@@ -44,8 +44,11 @@ export async function ensureBnkrId(): Promise<string> {
 export async function sendP2pMessage(
   receiverId: string,
   content: string,
+  clientMsgId?: string,
 ): Promise<P2pServerMessage> {
-  return api.post<P2pServerMessage>("/api/p2p/send", { receiverId, content });
+  const body: Record<string, unknown> = { receiverId, content };
+  if (clientMsgId) body.clientMsgId = clientMsgId;
+  return api.post<P2pServerMessage>("/api/p2p/send", body);
 }
 
 export async function fetchP2pHistory(

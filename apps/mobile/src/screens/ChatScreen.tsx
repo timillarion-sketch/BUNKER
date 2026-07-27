@@ -26,6 +26,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'>;
 export default function ChatScreen({ route, navigation }: Props) {
   const { characterId, characterName } = route.params;
   const insets = useSafeAreaInsets();
+  const sendingRef = useRef(false);
   const [messages, setMessages] = useState<AiChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -41,7 +42,9 @@ export default function ChatScreen({ route, navigation }: Props) {
 
   const handleSend = async () => {
     const text = inputText.trim();
-    if (!text || isTyping) return;
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
+    setIsTyping(true);
     setInputText('');
     setError(null);
 
@@ -52,8 +55,6 @@ export default function ChatScreen({ route, navigation }: Props) {
       createdAt: Date.now(),
     };
     setMessages(prev => [...prev, userMsg]);
-
-    setIsTyping(true);
 
     try {
       const history = messages.map(m => ({ role: m.role, content: m.content }));
@@ -68,6 +69,7 @@ export default function ChatScreen({ route, navigation }: Props) {
     } catch {
       setError('Ошибка отправки сообщения');
     } finally {
+      sendingRef.current = false;
       setIsTyping(false);
     }
   };
@@ -188,7 +190,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         <TouchableOpacity
           style={[styles.sendBtn, (isTyping || !inputText.trim()) && styles.sendBtnDisabled]}
           onPress={handleSend}
-          disabled={isTyping || !inputText.trim()}
+          disabled={isTyping || sendingRef.current || !inputText.trim()}
         >
           <Text style={styles.sendBtnText}>→</Text>
         </TouchableOpacity>

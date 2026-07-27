@@ -20,6 +20,7 @@ const registerSchema = z.object({
 const sendSchema = z.object({
   receiverId: bunkerIdSchema,
   content: z.string().min(1, "Требуется содержимое").max(50000, "Слишком длинное сообщение"),
+  clientMsgId: z.string().optional(),
 });
 
 router.post("/p2p/register-bunker", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -226,7 +227,7 @@ router.post("/p2p/send", requireAuth, async (req: AuthenticatedRequest, res: Res
     return;
   }
 
-  const { receiverId, content } = parsed.data;
+  const { receiverId, content, clientMsgId } = parsed.data;
 
   try {
     const [user] = await db
@@ -280,10 +281,41 @@ router.post("/p2p/send", requireAuth, async (req: AuthenticatedRequest, res: Res
         .returning()
     )[0];
 
-    const [message] = await db
-      .insert(p2pMessagesTable)
-      .values({ senderId, receiverId, content })
-      .returning();
+    const values: typeof p2pMessagesTable.$inferInsert = { senderId, receiverId, content };
+    if (clientMsgId) values.clientMsgId = clientMsgId;
+
+    let message: typeof p2pMessagesTable.$inferSelect;
+
+    if (clientMsgId) {
+      const inserted = await db
+        .insert(p2pMessagesTable)
+        .values(values)
+        .onConflictDoNothing({ target: p2pMessagesTable.clientMsgId })
+        .returning();
+      if (inserted.length > 0) {
+        message = inserted[0];
+      } else {
+        await db
+          .select()
+          .from(p2pMessagesTable)
+          .where(eq(p2pMessagesTable.clientMsgId, clientMsgId))
+          .limit(1)
+          .then(([m]) => {
+            if (!m) throw new Error("Idempotency conflict but message not found");
+            res.status(200).json({
+              ...m,
+              contactPending: !existingContact || existingContact.status !== "accepted",
+              contactId: effectiveContact.id,
+            });
+          });
+        return;
+      }
+    } else {
+      [message] = await db
+        .insert(p2pMessagesTable)
+        .values(values)
+        .returning();
+    }
 
     try {
       await sendSseToUser(String(recipient.id), "p2p_message", {

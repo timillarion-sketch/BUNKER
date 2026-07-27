@@ -44,6 +44,7 @@ export default function AiChatScreen({ route, navigation }: Props) {
   const { characterId, characterName, characterAvatar } = route.params;
   const insets = useSafeAreaInsets();
   const { accent } = useAccent();
+  const sendingRef = useRef(false);
   const [messages, setMessages] = useState<AiChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
@@ -170,7 +171,9 @@ export default function AiChatScreen({ route, navigation }: Props) {
 
   const handleSend = async () => {
     const text = inputText.trim();
-    if (!text || sending) return;
+    if (!text || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
     setInputText('');
     setError(null);
 
@@ -181,7 +184,6 @@ export default function AiChatScreen({ route, navigation }: Props) {
       createdAt: Date.now(),
     };
     setMessages(prev => [...prev, userMsg]);
-    setSending(true);
 
     try {
       const history = messages
@@ -218,6 +220,7 @@ export default function AiChatScreen({ route, navigation }: Props) {
     } catch {
       setError('Ошибка связи с сервером');
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };

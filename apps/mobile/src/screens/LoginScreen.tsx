@@ -2,12 +2,11 @@ import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Linking,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../theme';
 import { api, storage, ApiError } from '../core';
+import { clearSession } from '../core/session';
+import { useAuth } from '../core/AuthProvider';
 import { startOAuthFlow } from '../services/OAuthService';
-import { ChatStorageService } from '../services/ChatStorageService';
-import { resetBnkrIdCache } from '../services/p2pService';
 
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -21,6 +20,7 @@ type Props = {
 };
 
 export default function LoginScreen({ navigation }: Props) {
+  const { signIn } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,24 +32,18 @@ export default function LoginScreen({ navigation }: Props) {
     }
     setLoading(true);
     try {
-      resetBnkrIdCache();
-      await api.clearTokens();
-      await ChatStorageService.clearAll();
-      await storage.remove('bunker_user_id');
-      await AsyncStorage.removeItem('p2p_contacts');
-      await AsyncStorage.removeItem('secret_contacts');
+      await clearSession();
 
       const res = await api.post<{ accessToken: string; refreshToken: string; user: { id: number } }>('/api/auth/login', { username, password });
       await api.setToken(res.accessToken);
       await api.setRefreshToken(res.refreshToken);
-      await storage.set('bunker_user_id', String(res.user.id));
       try {
         const payload = JSON.parse(atob(res.accessToken.split('.')[1]));
         if (payload.username) {
           await storage.set('current_username', payload.username);
         }
       } catch {}
-      navigation.replace('MainTabs');
+      signIn();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Ошибка подключения';
       if (e instanceof ApiError && e.status !== 0) {
@@ -67,12 +61,7 @@ export default function LoginScreen({ navigation }: Props) {
 
   const handleYandexLogin = async () => {
     try {
-      resetBnkrIdCache();
-      await api.clearTokens();
-      await ChatStorageService.clearAll();
-      await storage.remove('bunker_user_id');
-      await AsyncStorage.removeItem('p2p_contacts');
-      await AsyncStorage.removeItem('secret_contacts');
+      await clearSession();
 
       const result = await startOAuthFlow('yandex');
       await api.setToken(result.accessToken);
@@ -88,7 +77,7 @@ export default function LoginScreen({ navigation }: Props) {
           await storage.set('current_username', payload.username);
         }
       } catch {}
-      navigation.replace('MainTabs');
+      signIn();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Ошибка авторизации';
       Alert.alert('Ошибка', msg);

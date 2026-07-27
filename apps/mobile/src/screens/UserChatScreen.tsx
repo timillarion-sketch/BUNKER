@@ -47,6 +47,7 @@ export default function UserChatScreen({
   const [input, setInput] = useState('');
   const [myId, setMyId] = useState('');
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const sendingRef = useRef(false);
   const [sending, setSending] = useState(false);
   const [contactStatus, setContactStatus] = useState<ContactStatus | null>(() => {
     if (navContactStatus && typeof navContactId === 'number') {
@@ -152,7 +153,9 @@ export default function UserChatScreen({
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || sending || !myId) return;
+    if (!text || sendingRef.current || !myId) return;
+    sendingRef.current = true;
+    setSending(true);
 
     const optimistic: P2PMessage = {
       id: `opt_${Date.now()}`,
@@ -165,11 +168,12 @@ export default function UserChatScreen({
 
     setMessages(prev => prev.concat(optimistic));
     setInput('');
-    setSending(true);
     listRef.current?.scrollToEnd({ animated: true });
 
+    const clientMsgId = crypto.randomUUID?.() ?? `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
     try {
-      const serverMsg = await sendP2pMessage(peerId, text);
+      const serverMsg = await sendP2pMessage(peerId, text, clientMsgId);
 
       if (serverMsg.contactPending) {
         setContactStatus(prev => {
@@ -201,9 +205,10 @@ export default function UserChatScreen({
         ),
       );
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
-  }, [input, myId, sending, peerId]);
+  }, [input, myId, sendingRef, peerId]);
 
   const handleAcceptContact = async () => {
     if (!contactStatus || contactActionLoading) return;
@@ -366,10 +371,10 @@ export default function UserChatScreen({
         />
         <TouchableOpacity
           onPress={sendMessage}
-          disabled={!input.trim() || sending}
-          style={[styles.sendBtn, { backgroundColor: input.trim() && !sending ? accent : '#1e1e2e' }]}
+          disabled={!input.trim() || sendingRef.current}
+          style={[styles.sendBtn, { backgroundColor: input.trim() && !sendingRef.current ? accent : '#1e1e2e' }]}
         >
-          <Text style={[styles.sendIcon, { color: input.trim() && !sending ? '#000' : '#404060' }]}>
+          <Text style={[styles.sendIcon, { color: input.trim() && !sendingRef.current ? '#000' : '#404060' }]}>
             ➤
           </Text>
         </TouchableOpacity>
