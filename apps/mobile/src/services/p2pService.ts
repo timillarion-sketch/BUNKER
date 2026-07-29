@@ -115,6 +115,7 @@ export interface ServerContact {
   createdAt: string;
   peerBunkerId: string | null;
   peerDisplayName: string;
+  peerAvatarUrl: string | null;
   isRequester: boolean;
 }
 
@@ -124,4 +125,8 @@ export async function fetchServerContacts(): Promise<ServerContact[]> {
 
 export function onChatDeleted(handler: (data: string | null) => void): () => void {
   return sseConnection.on("chat_deleted", handler);
+}
+
+export function onProfileUpdated(handler: (data: string | null) => void): () => void {
+  return sseConnection.on("profile_updated", handler);
 }

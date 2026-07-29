@@ -65,6 +65,10 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
     res.write(`event: contact_request\ndata: ${JSON.stringify(data)}\n\n`);
   });
 
+  const unsubProfileUpdated = subscribe("profile_updated", (data) => {
+    res.write(`event: profile_updated\ndata: ${JSON.stringify(data)}\n\n`);
+  });
+
   const keepAlive = setInterval(() => {
     try {
       res.write(":keepalive\n\n");
@@ -80,6 +84,7 @@ router.get("/events", requireAuth, (req: AuthenticatedRequest, res: Response) =>
     unsubConversation();
     unsubP2p();
     unsubContactRequest();
+    unsubProfileUpdated();
     clearInterval(keepAlive);
     removeSseClient(clientId);
   };

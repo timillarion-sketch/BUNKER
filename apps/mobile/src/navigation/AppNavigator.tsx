@@ -35,7 +35,7 @@ type PersonalStackParamList = {
 
 type ChatStackParamList = {
   ChatList: undefined;
-  UserChat: { peerId: string; roomId: string; contactId?: number; contactStatus?: 'accepted' | 'pending' };
+  UserChat: { peerId: string; peerName?: string; peerAvatarUrl?: string | null; roomId: string; contactId?: number; contactStatus?: 'accepted' | 'pending'; isRequester?: boolean };
   SecretArchive: undefined;
   SecretContactSearch: { mode: string };
   SurvivalMenu: undefined;

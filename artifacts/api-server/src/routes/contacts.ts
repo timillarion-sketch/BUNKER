@@ -33,6 +33,7 @@ router.get("/contacts", requireAuth, async (req: AuthenticatedRequest, res: Resp
             bunkerId: usersTable.bunkerId,
             displayName: usersTable.displayName,
             username: usersTable.username,
+            avatarUrl: usersTable.avatarUrl,
           })
           .from(usersTable)
           .where(inArray(usersTable.id, peerIds))
@@ -47,6 +48,7 @@ router.get("/contacts", requireAuth, async (req: AuthenticatedRequest, res: Resp
         ...c,
         peerBunkerId: peer?.bunkerId || null,
         peerDisplayName: peer?.displayName || peer?.username || "Unknown",
+        peerAvatarUrl: peer?.avatarUrl || null,
         isRequester: c.requesterId === userId,
       };
     });

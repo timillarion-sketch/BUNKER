@@ -2,7 +2,7 @@ import React, {
   useState, useEffect, useRef, useCallback
 } from 'react';
 import {
-  View, Text, FlatList, TextInput,
+  View, Text, FlatList, TextInput, Image,
   TouchableOpacity, StyleSheet, Alert,
   KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
@@ -15,6 +15,7 @@ import {
   sendP2pMessage,
   fetchP2pHistory,
   onP2pMessage,
+  onProfileUpdated,
   fetchContactStatus,
   type P2pServerMessage,
   type ContactStatus,
@@ -32,9 +33,10 @@ interface P2PMessage {
 export default function UserChatScreen({
   route, navigation
 }: any) {
-  const { peerId, peerName, roomId, mode, contactId: navContactId, contactStatus: navContactStatus, isRequester: navIsRequester } = route.params as {
+  const { peerId, peerName, roomId, mode, contactId: navContactId, contactStatus: navContactStatus, isRequester: navIsRequester, peerAvatarUrl: navPeerAvatarUrl } = route.params as {
     peerId: string;
     peerName?: string;
+    peerAvatarUrl?: string | null;
     roomId: string;
     mode?: 'hidden' | 'incognito';
     contactId?: number;
@@ -56,6 +58,7 @@ export default function UserChatScreen({
     return null;
   });
   const [contactActionLoading, setContactActionLoading] = useState(false);
+  const [peerAvatarUrl, setPeerAvatarUrl] = useState<string | null>(navPeerAvatarUrl ?? null);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -106,6 +109,20 @@ export default function UserChatScreen({
       title: peerName || peerId,
       headerStyle: { backgroundColor: '#0a0a0f' },
       headerTintColor: accent,
+      headerTitle: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {peerAvatarUrl ? (
+            <Image source={{ uri: peerAvatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+          ) : (
+            <View style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: accent, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: accent, fontSize: 14, fontWeight: '700' }}>
+                {(peerName || peerId || '?').charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <Text style={{ color: '#e0e0ff', fontSize: 17, fontWeight: '600' }}>{peerName || peerId}</Text>
+        </View>
+      ),
     });
 
     return () => controller.abort();
@@ -147,6 +164,20 @@ export default function UserChatScreen({
       } catch {
         // ignore parse errors
       }
+    });
+    return unsub;
+  }, [peerId]);
+
+  useEffect(() => {
+    if (!peerId) return;
+    const unsub = onProfileUpdated((data) => {
+      if (!data) return;
+      try {
+        const { peerId: updatedPeerId, avatarUrl } = JSON.parse(data);
+        if (updatedPeerId === peerId) {
+          setPeerAvatarUrl(avatarUrl ?? null);
+        }
+      } catch {}
     });
     return unsub;
   }, [peerId]);

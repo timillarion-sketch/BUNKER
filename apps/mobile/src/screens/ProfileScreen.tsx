@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, ScrollView, Switch, LayoutAnimation, Platform, UIManager, Modal,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, ScrollView, Switch, LayoutAnimation, Platform, UIManager, Modal, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
@@ -15,6 +15,7 @@ import { ensureBnkrId, resetBnkrIdCache } from '../services/p2pService';
 import * as Clipboard from 'expo-clipboard';
 import { VpnService } from '../services/VpnService';
 import { parseProxyUri } from '../utils/configParser';
+import { useImageUpload } from '../hooks/useImageUpload';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -62,6 +63,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const [editingNick, setEditingNick] = useState(false);
   const [savingNick, setSavingNick] = useState(false);
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const { pickAndUploadImage, isUploading: uploadingAvatar } = useImageUpload();
 
   const pulse = useCallback(() => {
     Animated.loop(
@@ -120,9 +123,20 @@ export default function ProfileScreen({ navigation }: Props) {
   );
 
   useEffect(() => {
-    AsyncStorage.getItem('user_nickname').then(n => {
-      if (n) setNickname(n);
-    });
+    (async () => {
+      const cached = await AsyncStorage.getItem('user_nickname');
+      if (cached) setNickname(cached);
+      try {
+        const data = await api.get<{ displayName: string | null; avatarUrl: string | null }>('/api/auth/me');
+        if (data.displayName) {
+          setNickname(data.displayName);
+          await AsyncStorage.setItem('user_nickname', data.displayName);
+        }
+        if (data.avatarUrl) {
+          setAvatarUrl(data.avatarUrl);
+        }
+      } catch {}
+    })();
   }, []);
 
   const handleCopyId = async () => {
@@ -223,6 +237,17 @@ export default function ProfileScreen({ navigation }: Props) {
     : vpnStatus === 'connecting' ? 'ПОДКЛЮЧЕНИЕ...'
     : 'ОТКЛЮЧЕНО';
 
+  const handleAvatarTap = async () => {
+    try {
+      const url = await pickAndUploadImage('avatar');
+      const data = await api.patch<{ avatarUrl: string }>('/api/auth/me', { avatarUrl: url });
+      setAvatarUrl(data.avatarUrl);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Ошибка загрузки аватара';
+      Alert.alert('Ошибка', msg);
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg, paddingTop: insets.top }]}>
       <View style={styles.scanlines} pointerEvents="none" />
@@ -230,6 +255,18 @@ export default function ProfileScreen({ navigation }: Props) {
         <Text style={[styles.header, { color: accent, textShadowColor: accent }]}>ПРОФИЛЬ</Text>
 
         <View style={[styles.card, { borderColor: accent, backgroundColor: theme.colors.card }]}>
+          <TouchableOpacity onPress={handleAvatarTap} disabled={uploadingAvatar} style={styles.avatarWrap}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { borderColor: accent }]}>
+                <Text style={[styles.avatarInitial, { color: accent }]}>
+                  {nickname ? nickname.charAt(0).toUpperCase() : '?'}
+                </Text>
+              </View>
+            )}
+            {uploadingAvatar && <View style={styles.avatarOverlay}><Text style={styles.avatarOverlayText}>...</Text></View>}
+          </TouchableOpacity>
           <Text style={[styles.label, { color: theme.colors.textMuted }]}>Имя пользователя</Text>
           {editingNick ? (
             <View style={styles.nickEditRow}>
@@ -246,15 +283,17 @@ export default function ProfileScreen({ navigation }: Props) {
                 onPress={async () => {
                   setSavingNick(true);
                   const name = nickname.trim();
-                  await AsyncStorage.setItem('user_nickname', name);
                   try {
-                    await api.request('/api/auth/me', {
-                      method: 'PATCH',
-                      body: JSON.stringify({ username: name }),
-                    });
-                  } catch {}
-                  setSavingNick(false);
-                  setEditingNick(false);
+                    const data = await api.patch<{ displayName: string }>('/api/auth/me', { displayName: name });
+                    await AsyncStorage.setItem('user_nickname', data.displayName);
+                    setNickname(data.displayName);
+                    setSavingNick(false);
+                    setEditingNick(false);
+                  } catch (e: unknown) {
+                    const msg = e instanceof Error ? e.message : 'Ошибка сохранения';
+                    Alert.alert('Ошибка', msg);
+                    setSavingNick(false);
+                  }
                 }}
                 style={[styles.nickSaveBtn, { borderColor: accent }]}
               >
@@ -959,5 +998,44 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     letterSpacing: 1,
     opacity: 0.3,
+  },
+  avatarWrap: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+  },
+  avatarPlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: 36,
+    fontWeight: '700',
+    fontFamily: 'monospace',
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarOverlayText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '700',
   },
 });

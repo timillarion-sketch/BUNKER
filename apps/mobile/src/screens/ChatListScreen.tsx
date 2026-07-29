@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Alert,
-  Modal, TextInput, ActivityIndicator, Platform,
+  Modal, TextInput, ActivityIndicator, Platform, Image,
   KeyboardAvoidingView, ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import { api } from '@/core';
-import { connectSse, onContactRequest, onChatDeleted, deleteChat, ensureBnkrId, initiateChannel, fetchServerContacts, type ServerContact } from '../services/p2pService';
+import { connectSse, onContactRequest, onChatDeleted, onProfileUpdated, deleteChat, ensureBnkrId, initiateChannel, fetchServerContacts, type ServerContact } from '../services/p2pService';
 import { isValidBnkrId } from '../core/bnkr';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import SecretPinScreen from './SecretPinScreen';
@@ -17,7 +17,7 @@ import SecretPinScreen from './SecretPinScreen';
 type ChatStackParamList = {
   ChatList: undefined;
   Chat: { chatId: string; title: string };
-  UserChat: { peerId: string; peerName?: string; roomId: string; contactId?: number; contactStatus?: 'accepted' | 'pending'; isRequester?: boolean };
+  UserChat: { peerId: string; peerName?: string; peerAvatarUrl?: string | null; roomId: string; contactId?: number; contactStatus?: 'accepted' | 'pending'; isRequester?: boolean };
   SecretArchive: undefined;
 };
 
@@ -35,6 +35,7 @@ interface ChatRoom {
 interface Contact {
   id: string;
   name: string;
+  avatarUrl: string | null;
   emoji: string;
   color: string;
   roomId: string;
@@ -51,6 +52,7 @@ function createServerContact(sc: ServerContact): Contact {
   return {
     id: sc.peerBunkerId || '',
     name: sc.peerDisplayName || sc.peerBunkerId || 'Unknown',
+    avatarUrl: sc.peerAvatarUrl ?? null,
     emoji: '💬',
     color: '#00F0FF',
     roomId: `dm_server_${sc.peerBunkerId}`,
@@ -173,6 +175,7 @@ export default function ChatListScreen({ navigation }: Props) {
           saveContact({
             id: data.fromBunkerId,
             name: data.fromBunkerId,
+            avatarUrl: null,
             emoji: '💬',
             color: '#00F0FF',
             roomId,
@@ -199,9 +202,25 @@ export default function ChatListScreen({ navigation }: Props) {
       } catch {}
     });
 
+    const unsubProfile = onProfileUpdated((raw) => {
+      if (!raw) return;
+      try {
+        const { peerId, avatarUrl } = JSON.parse(raw);
+        if (!peerId) return;
+        setContacts(prev => {
+          const updated = prev.map(c =>
+            c.id === peerId ? { ...c, avatarUrl: avatarUrl ?? null } : c,
+          );
+          AsyncStorage.setItem('p2p_contacts', JSON.stringify(updated));
+          return updated;
+        });
+      } catch {}
+    });
+
     return () => {
       unsubContact();
       unsubChatDeleted();
+      unsubProfile();
     };
   }, []);
 
@@ -245,6 +264,7 @@ export default function ChatListScreen({ navigation }: Props) {
       const newContact: Contact = {
         id: trimmed,
         name: contactName.trim() || trimmed,
+        avatarUrl: null,
         emoji: '💬',
         color: '#00F0FF',
         roomId,
@@ -283,6 +303,7 @@ export default function ChatListScreen({ navigation }: Props) {
       const newContact: Contact = {
         id: pendingRequest.fromBunkerId,
         name: pendingRequest.fromBunkerId,
+        avatarUrl: null,
         emoji: '💬',
         color: '#00F0FF',
         roomId: `dm_${Date.now()}`,
@@ -438,6 +459,7 @@ export default function ChatListScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('UserChat', {
                 peerId: item.id,
                 peerName: item.name,
+                peerAvatarUrl: item.avatarUrl,
                 roomId: item.roomId,
                 contactId: item.contactDbId,
                 contactStatus: item.contactStatus,
@@ -446,7 +468,11 @@ export default function ChatListScreen({ navigation }: Props) {
               onLongPress={() => handleDeleteChat(item)}
               style={[styles.contactRow, { borderLeftColor: item.color, borderLeftWidth: 3 }]}
             >
-              <Text style={styles.contactEmoji}>{item.emoji}</Text>
+              {item.avatarUrl ? (
+                <Image source={{ uri: item.avatarUrl }} style={styles.contactAvatar} />
+              ) : (
+                <Text style={styles.contactEmoji}>{item.emoji}</Text>
+              )}
               <View style={styles.contactInfo}>
                 <Text style={styles.contactName}>{item.name}</Text>
                 <Text style={styles.contactId}>{item.id}</Text>
@@ -775,5 +801,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 2,
+  },
+  contactAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
   },
 });
