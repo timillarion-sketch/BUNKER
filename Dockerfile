@@ -26,6 +26,7 @@ COPY shared/ shared/
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 RUN addgroup -g 1001 nodegroup && \
     adduser -u 1001 -G nodegroup -s /bin/sh -D nodeuser
+RUN mkdir -p /var/bunker-uploads && chown -R nodeuser:nodegroup /var/bunker-uploads
 RUN chown -R nodeuser:nodegroup /app
 USER nodeuser
 EXPOSE 8080

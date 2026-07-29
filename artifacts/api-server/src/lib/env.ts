@@ -26,6 +26,7 @@ const envSchema = z.object({
   YANDEX_REDIRECT_URI: z.string().default(""),
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
+  UPLOADS_DIR: z.string().default("/var/bunker-uploads"),
   TELEGRAM_BOT_TOKEN: z.string().min(1),
   TELEGRAM_BOT_USERNAME: z.string().default("BunkerUserbot"),
 });

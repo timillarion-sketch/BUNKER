@@ -75,6 +75,8 @@ services:
       redis:
         condition: service_started
     restart: unless-stopped
+    volumes:
+      - bunker-uploads:/var/bunker-uploads
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/healthz"]
       interval: 30s
@@ -103,9 +105,11 @@ services:
       - /root/bunker-app/letsencrypt-webroot/.well-known/acme-challenge:/usr/share/nginx/html/.well-known/acme-challenge
       - /root/bunker-app/nginx.conf:/etc/nginx/conf.d/default.conf
       - /root/bunker-app/.adminer_passwd:/etc/nginx/.adminer_passwd:ro
+      - bunker-uploads:/var/bunker-uploads:ro
     depends_on:
       - api
     restart: unless-stopped
 
 volumes:
   pgdata:
+  bunker-uploads:

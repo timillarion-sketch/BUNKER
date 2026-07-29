@@ -17,6 +17,7 @@ import botRouter from "./bot";
 import p2pRouter from "./p2p";
 import contentRouter from "./content";
 import memoryRouter from "./memory";
+import uploadRouter from "./upload";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(botRouter);
 router.use(contentRouter);
 router.use(p2pRouter);
 router.use(memoryRouter);
+router.use(uploadRouter);
 
 export default router;
