@@ -5,10 +5,16 @@
  * BUNKER API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { AnalyzePageResponsePrivacyRisk } from "./analyzePageResponsePrivacyRisk";
+import type { AnalyzePageResponseConfidence } from "./analyzePageResponseConfidence";
+import type { AnalyzePageResponseOverallVerdict } from "./analyzePageResponseOverallVerdict";
 
 export interface AnalyzePageResponse {
+  url: string;
   summary: string;
   keyPoints: string[];
-  privacyRisk: AnalyzePageResponsePrivacyRisk;
+  overallVerdict: AnalyzePageResponseOverallVerdict;
+  confidence: AnalyzePageResponseConfidence;
+  domainSquatting: boolean;
+  riskFlags: string[];
+  disclaimer: string;
 }

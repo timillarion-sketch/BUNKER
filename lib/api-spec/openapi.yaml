@@ -201,16 +201,34 @@ components:
     AnalyzePageResponse:
       type: object
       properties:
+        url:
+          type: string
         summary:
           type: string
         keyPoints:
           type: array
           items:
             type: string
-        privacyRisk:
+        overallVerdict:
+          type: string
+          enum: [likely_safe, suspicious, dangerous, inconclusive]
+        confidence:
           type: string
           enum: [low, medium, high]
+        domainSquatting:
+          type: boolean
+        riskFlags:
+          type: array
+          items:
+            type: string
+        disclaimer:
+          type: string
       required:
+        - url
         - summary
         - keyPoints
-        - privacyRisk
+        - overallVerdict
+        - confidence
+        - domainSquatting
+        - riskFlags
+        - disclaimer

@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useAccent } from '../core/AccentContext';
 import { api } from '@/core';
+import ColorPickerModal from '../components/ColorPickerModal';
 import {
   ensureBnkrId,
   sendP2pMessage,
@@ -69,7 +70,19 @@ export default function UserChatScreen({
 
   const isIncognito = mode === 'incognito';
 
+  const [chatBackgroundColor, setChatBackgroundColor] = useState('#000000');
+  const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
+
   useEffect(() => {
+    // Load chat background preference
+    api.get<{ backgroundColor: string }>(`/api/chat-prefs/p2p/${peerId}`)
+      .then(res => {
+        setChatBackgroundColor(res.backgroundColor);
+      })
+      .catch(() => {
+        setChatBackgroundColor('#000000');
+      });
+
     const controller = new AbortController();
 
     (async () => {
@@ -241,6 +254,16 @@ export default function UserChatScreen({
     }
   }, [input, myId, sendingRef, peerId]);
 
+  const saveChatBackground = async (color: string) => {
+    try {
+      await api.put(`/api/chat-prefs/p2p/${peerId}`, { backgroundColor: color });
+      setChatBackgroundColor(color);
+      setIsColorPickerVisible(false);
+    } catch (err) {
+      // silently fail, keep current color
+    }
+  };
+
   const handleAcceptContact = async () => {
     if (!contactStatus || contactActionLoading) return;
     setContactActionLoading(true);
@@ -298,7 +321,7 @@ export default function UserChatScreen({
 
   return (
     <KeyboardAvoidingView
-      style={styles.root}
+      style={[styles.root, { backgroundColor: chatBackgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? TAB_BAR_HEIGHT + insets.bottom + 8 : 0}
     >
@@ -389,6 +412,13 @@ export default function UserChatScreen({
         />
       )}
 
+      <TouchableOpacity
+        onPress={() => setIsColorPickerVisible(true)}
+        style={styles.colorPickerBtn}
+      >
+        <Text style={styles.colorPickerText}>🎨 Цвет фона</Text>
+      </TouchableOpacity>
+
       <View style={[styles.inputRow, { borderTopColor: accent + '33', paddingBottom: Platform.OS === 'android' ? TAB_BAR_HEIGHT + insets.bottom : Math.max(insets.bottom, 16) }]}> 
         <TextInput
           value={input}
@@ -410,11 +440,34 @@ export default function UserChatScreen({
           </Text>
         </TouchableOpacity>
       </View>
+
+      <ColorPickerModal
+        visible={isColorPickerVisible}
+        initialColor={chatBackgroundColor}
+        onClose={saveChatBackground}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  colorPickerBtn: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: 'flex-end',
+    marginHorizontal: 8,
+    marginTop: 4,
+  },
+  colorPickerText: {
+    color: '#e0e0ff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
   root: { flex: 1, backgroundColor: '#050508' },
   peerHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

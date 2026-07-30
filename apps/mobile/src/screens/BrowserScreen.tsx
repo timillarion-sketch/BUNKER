@@ -1,13 +1,13 @@
 import { useRef, useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Dimensions, Switch, Animated } from 'react-native';
-import { WebView, WebViewMessageEvent, WebViewProgressEvent, WebViewErrorEvent } from 'react-native-webview';
+import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useVpnProxy } from '../hooks/useVpnProxy';
 import { checkDnsLeak } from '../utils/dnsLeakDetector';
-import { WEBVIEW_INJECTED_JS, isUrlSafe, NEURAL_ANALYSIS_JS } from '../utils/webViewSecurity';
+import { WEBVIEW_INJECTED_JS, isUrlSafe, NEURAL_ANALYSIS_JS, PAGE_CONTENT_EXTRACT_JS } from '../utils/webViewSecurity';
 
 const { width } = Dimensions.get('window');
 
@@ -16,14 +16,38 @@ const INITIAL_URL = 'https://duckduckgo.com';
 
 const COOKIE_CLEAR_JS = `
   (function() {
-    document.cookie.split(';').forEach(function(c) {
+    var cookies = document.cookie.split(';');
+    cookies.forEach(function(c) {
       document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/');
     });
-    document.cookie.split(';').forEach(function(c) {
+    cookies.forEach(function(c) {
       document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;domain=' + location.hostname);
     });
     try { localStorage.clear(); } catch(e) {}
     try { sessionStorage.clear(); } catch(e) {}
+    try {
+      if (window.indexedDB) {
+        window.indexedDB.databases().then(function(dbs) {
+          dbs.forEach(function(db) {
+            if (db.name) window.indexedDB.deleteDatabase(db.name);
+          });
+        });
+      }
+    } catch(e) {}
+    try {
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(reg) { reg.unregister(); });
+        });
+      }
+    } catch(e) {}
+    try {
+      if (window.caches) {
+        caches.keys().then(function(names) {
+          names.forEach(function(name) { caches.delete(name); });
+        });
+      }
+    } catch(e) {}
     window.ReactNativeWebView.postMessage('cookies_cleared');
   })();
 `;
@@ -45,6 +69,18 @@ export default function BrowserScreen() {
   const [neuralEnabled, setNeuralEnabled] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const toastOpacity = useRef(new Animated.Value(0)).current;
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<{
+    summary: string;
+    keyPoints: string[];
+    overallVerdict: string;
+    confidence: string;
+    disclaimer: string;
+    domainSquatting: boolean;
+  } | null>(null);
+  const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
+  const [pageContent, setPageContent] = useState<string | null>(null);
+  const privacyAccepted = useRef(false);
 
   const containerPaddingBottom = Platform.OS === 'android'
     ? TAB_BAR_HEIGHT + insets.bottom + 24
@@ -68,22 +104,30 @@ export default function BrowserScreen() {
     if (!loading) setError(null);
   };
 
-  const onLoadProgress = (event: WebViewProgressEvent) => {
+  const onLoadProgress = (event: { nativeEvent: { progress: number } }) => {
     setProgress(event.nativeEvent.progress);
   };
 
   const onLoadStart = () => { setIsLoading(true); setError(null); };
   const onLoadEnd = () => { setIsLoading(false); setProgress(1); };
 
-  const onLoadError = (event: WebViewErrorEvent) => {
+  const onLoadError = (event: { nativeEvent: { description?: string } }) => {
     setIsLoading(false);
     setError(event.nativeEvent.description || 'Ошибка загрузки');
   };
 
   const onMessage = (event: WebViewMessageEvent) => {
-    if (event.nativeEvent.data === 'cookies_cleared') {
-      showToast('Цифровой след очищен. Cookie удалены');
+    const data = event.nativeEvent.data;
+    if (data === 'cookies_cleared') {
+      showToast('Цифровой след очищен. Cookie и кэш удалены');
+      return;
     }
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.type === 'page_content') {
+        setPageContent(parsed.data.textContent || '');
+      }
+    } catch {}
   };
 
   const handleClearCookies = () => {
@@ -91,9 +135,45 @@ export default function BrowserScreen() {
   };
 
   const handleNeuralToggle = (value: boolean) => {
+    if (value && !privacyAccepted.current) {
+      setShowPrivacyDialog(true);
+      return;
+    }
     setNeuralEnabled(value);
     if (value && webViewRef.current) {
       webViewRef.current.injectJavaScript(NEURAL_ANALYSIS_JS);
+    }
+  };
+
+  const acceptPrivacy = () => {
+    privacyAccepted.current = true;
+    setShowPrivacyDialog(false);
+    setNeuralEnabled(true);
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(NEURAL_ANALYSIS_JS);
+    }
+  };
+
+  const declinePrivacy = () => {
+    setShowPrivacyDialog(false);
+  };
+
+  const handleAnalyzePage = async () => {
+    if (!url || isAnalyzing) return;
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(PAGE_CONTENT_EXTRACT_JS);
+    }
+    await new Promise(r => setTimeout(r, 500));
+    try {
+      const { analyzePage } = await import('@workspace/api-client-react');
+      const result = await analyzePage({ url, content: pageContent || undefined });
+      setAnalysisResult(result as any);
+    } catch (err) {
+      showToast('Ошибка анализа страницы');
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -200,6 +280,17 @@ export default function BrowserScreen() {
           trackColor={{ false: '#1e1e2e', true: accent }}
           thumbColor={neuralEnabled ? '#fff' : '#606080'}
         />
+        {neuralEnabled && (
+          <TouchableOpacity
+            onPress={handleAnalyzePage}
+            disabled={isAnalyzing}
+            style={[styles.analyzeBtn, { backgroundColor: accent + '20' }]}
+          >
+            <Text style={[styles.analyzeBtnText, { color: accent }]}>
+              {isAnalyzing ? '...' : '🔍 АНАЛИЗ'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {isLoading && progress < 1 && (
@@ -209,6 +300,61 @@ export default function BrowserScreen() {
       <View style={{ flex: 1, paddingBottom: containerPaddingBottom }}>
         <WebView {...webViewProps} />
       </View>
+
+      {showPrivacyDialog && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={styles.modalTitle}>🔒 Анализ безопасности</Text>
+            <Text style={styles.modalText}>
+              При активации URL и содержимое страницы будут отправлены на ИИ-сервер для проверки на фишинг и вредоносный код.
+              {'\n\n'}Данные не сохраняются и используются только для однократной проверки.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.colors.accent }]} onPress={acceptPrivacy}>
+                <Text style={styles.modalBtnText}>Понятно, включить</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBtnSecondary} onPress={declinePrivacy}>
+                <Text style={[styles.modalBtnTextSecondary, { color: theme.colors.textMuted }]}>Отмена</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {analysisResult && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={styles.modalTitle}>
+              {analysisResult.overallVerdict === 'dangerous' ? '🚫 Опасно' :
+               analysisResult.overallVerdict === 'suspicious' ? '⚠️ Подозрительно' :
+               analysisResult.overallVerdict === 'likely_safe' ? '✅ Безопасно' :
+               '🟡 Неопределено'}
+            </Text>
+            {analysisResult.domainSquatting && (
+              <Text style={styles.riskBadge}>⚠️ Домен похож на фишинговый</Text>
+            )}
+            <Text style={styles.modalText}>{analysisResult.summary}</Text>
+            {analysisResult.keyPoints.length > 0 && (
+              <View style={styles.keyPointsList}>
+                {analysisResult.keyPoints.map((point: string, i: number) => (
+                  <Text key={i} style={styles.keyPointText}>• {point}</Text>
+                ))}
+              </View>
+            )}
+            <Text style={styles.confidenceText}>
+              Уверенность: {analysisResult.confidence === 'high' ? 'высокая' :
+                           analysisResult.confidence === 'medium' ? 'средняя' : 'низкая'}
+            </Text>
+            <Text style={styles.disclaimerText}>{analysisResult.disclaimer}</Text>
+            <TouchableOpacity
+              style={[styles.modalBtn, { backgroundColor: theme.colors.accent }]}
+              onPress={() => setAnalysisResult(null)}
+            >
+              <Text style={styles.modalBtnText}>Закрыть</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {error && (
         <View style={styles.errorOverlay}>
@@ -299,4 +445,20 @@ const styles = StyleSheet.create({
   toast: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14, shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 12, elevation: 12 },
   toastIcon: { color: '#000', fontSize: 16, fontWeight: '800' },
   toastText: { color: '#000', fontSize: 13, fontWeight: '700' },
+  analyzeBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, },
+  analyzeBtnText: { fontSize: 9, fontWeight: '700', letterSpacing: 1 },
+  modalOverlay: { ...StyleSheet.absoluteFill, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.75)', padding: 20, zIndex: 20 },
+  modalCard: { borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, maxWidth: 340, width: '100%' },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
+  modalText: { color: '#c0c0e0', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 16 },
+  modalActions: { flexDirection: 'column', gap: 10, width: '100%' },
+  modalBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  modalBtnText: { color: '#000', fontWeight: '700', fontSize: 14 },
+  modalBtnSecondary: { paddingVertical: 8, alignItems: 'center' },
+  modalBtnTextSecondary: { fontSize: 13, fontWeight: '600' },
+  riskBadge: { backgroundColor: '#ff444420', color: '#ff6666', fontSize: 12, fontWeight: '700', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, overflow: 'hidden', marginBottom: 12 },
+  keyPointsList: { alignSelf: 'stretch', marginBottom: 12 },
+  keyPointText: { color: '#a0a0c0', fontSize: 12, lineHeight: 18 },
+  confidenceText: { color: '#8080a0', fontSize: 11, marginBottom: 8 },
+  disclaimerText: { color: '#606080', fontSize: 10, fontStyle: 'italic', marginBottom: 16, textAlign: 'center' },
 });

@@ -18,6 +18,7 @@ import p2pRouter from "./p2p";
 import contentRouter from "./content";
 import memoryRouter from "./memory";
 import uploadRouter from "./upload";
+import chatPrefsRouter from "./chat-prefs";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(contentRouter);
 router.use(p2pRouter);
 router.use(memoryRouter);
 router.use(uploadRouter);
+router.use(chatPrefsRouter);
 
 export default router;

@@ -56,17 +56,32 @@ export interface AnalyzePageRequest {
   content?: string;
 }
 
-export type AnalyzePageResponsePrivacyRisk =
-  (typeof AnalyzePageResponsePrivacyRisk)[keyof typeof AnalyzePageResponsePrivacyRisk];
+export type AnalyzePageResponseOverallVerdict =
+  (typeof AnalyzePageResponseOverallVerdict)[keyof typeof AnalyzePageResponseOverallVerdict];
 
-export const AnalyzePageResponsePrivacyRisk = {
+export const AnalyzePageResponseOverallVerdict = {
+  likely_safe: "likely_safe",
+  suspicious: "suspicious",
+  dangerous: "dangerous",
+  inconclusive: "inconclusive",
+} as const;
+
+export type AnalyzePageResponseConfidence =
+  (typeof AnalyzePageResponseConfidence)[keyof typeof AnalyzePageResponseConfidence];
+
+export const AnalyzePageResponseConfidence = {
   low: "low",
   medium: "medium",
   high: "high",
 } as const;
 
 export interface AnalyzePageResponse {
+  url: string;
   summary: string;
   keyPoints: string[];
-  privacyRisk: AnalyzePageResponsePrivacyRisk;
+  overallVerdict: AnalyzePageResponseOverallVerdict;
+  confidence: AnalyzePageResponseConfidence;
+  domainSquatting: boolean;
+  riskFlags: string[];
+  disclaimer: string;
 }

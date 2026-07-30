@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type AnalyzePageResponsePrivacyRisk =
-  (typeof AnalyzePageResponsePrivacyRisk)[keyof typeof AnalyzePageResponsePrivacyRisk];
+export type AnalyzePageResponseConfidence =
+  (typeof AnalyzePageResponseConfidence)[keyof typeof AnalyzePageResponseConfidence];
 
-export const AnalyzePageResponsePrivacyRisk = {
+export const AnalyzePageResponseConfidence = {
   low: "low",
   medium: "medium",
   high: "high",

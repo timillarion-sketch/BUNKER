@@ -70,6 +70,27 @@ export const BLOCKED_URL_PATTERNS = [
   'file://',
 ] as const;
 
+export const PAGE_CONTENT_EXTRACT_JS = `
+  (function() {
+    var data = {
+      title: document.title || '',
+      metaDescription: '',
+      metaKeywords: '',
+      textContent: '',
+    };
+    var metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) data.metaDescription = metaDesc.getAttribute('content') || '';
+    var metaKeys = document.querySelector('meta[name="keywords"]');
+    if (metaKeys) data.metaKeywords = metaKeys.getAttribute('content') || '';
+    var body = document.body;
+    if (body) {
+      var text = body.innerText || body.textContent || '';
+      data.textContent = text.substring(0, 3000);
+    }
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'page_content', data: data }));
+  })();
+`;
+
 export function isUrlSafe(url: string): boolean {
   const lowerUrl = url.toLowerCase();
   return !BLOCKED_URL_PATTERNS.some(

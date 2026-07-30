@@ -8,7 +8,8 @@
 
 export * from "./analyzePageRequest";
 export * from "./analyzePageResponse";
-export * from "./analyzePageResponsePrivacyRisk";
+export * from "./analyzePageResponseConfidence";
+export * from "./analyzePageResponseOverallVerdict";
 export * from "./burnHistoryResponse";
 export * from "./character";
 export * from "./characterStatus";
@@ -16,4 +17,3 @@ export * from "./healthStatus";
 export * from "./message";
 export * from "./messageRole";
 export * from "./sendMessageRequest";
-export * from "./contact";

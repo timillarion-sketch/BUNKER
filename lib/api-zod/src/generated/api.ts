@@ -13,9 +13,6 @@ import * as zod from "zod";
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
-  db: zod.enum(["ok", "error"]).optional(),
-  uptime: zod.number().optional(),
-  timestamp: zod.string().optional(),
 });
 
 /**
@@ -87,28 +84,17 @@ export const AnalyzePageBody = zod.object({
 });
 
 export const AnalyzePageResponse = zod.object({
+  url: zod.string(),
   summary: zod.string(),
   keyPoints: zod.array(zod.string()),
-  privacyRisk: zod.enum(["low", "medium", "high"]),
-});
-
-/**
- * @summary Add a contact (send friend request)
- */
-export const AddContactBody = zod.object({
-  userId: zod.string().min(1),
-});
-
-export const ContactResponse = zod.object({
-  id: zod.number(),
-  requesterId: zod.string(),
-  addresseeId: zod.string(),
-  status: zod.string(),
-  createdAt: zod.string().nullable(),
-});
-
-export const ListContactsResponse = zod.array(ContactResponse);
-
-export const ErrorResponse = zod.object({
-  error: zod.string(),
+  overallVerdict: zod.enum([
+    "likely_safe",
+    "suspicious",
+    "dangerous",
+    "inconclusive",
+  ]),
+  confidence: zod.enum(["low", "medium", "high"]),
+  domainSquatting: zod.boolean(),
+  riskFlags: zod.array(zod.string()),
+  disclaimer: zod.string(),
 });

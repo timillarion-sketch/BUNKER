@@ -14,3 +14,4 @@ export * from "./video-interactions";
 export * from "./p2p-messages";
 export * from "./p2p-deletions";
 export * from "./content";
+export * from "./chat-display-prefs";

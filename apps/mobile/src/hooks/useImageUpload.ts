@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import * as ImagePicker from 'expo-image-picker';
+import { Paths, File } from 'expo-file-system';
 import { api, API_URL } from '@/core';
 
 type UploadType = 'avatar' | 'chat_wallpaper';
@@ -39,12 +40,21 @@ export function useImageUpload(): UseImageUploadReturn {
     }
 
     const file = result.assets[0];
+    console.log('Picked file URI:', file.uri);
+    let uriToUse = file.uri;
+
+    if (file.uri.startsWith('content://')) {
+      const source = new File(file.uri);
+      const dest = new File(Paths.cache, `${Date.now()}.webp`);
+      await source.copy(dest);
+      uriToUse = dest.uri;
+    }
 
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append('image', {
-        uri: file.uri,
+        uri: uriToUse,
         name: 'upload.webp',
         type: file.mimeType || 'image/webp',
       } as any);

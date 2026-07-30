@@ -497,9 +497,11 @@ export default function ProfileScreen({ navigation }: Props) {
 
           <ColorPickerModal
             visible={pickerVisible}
-            currentColor={accent}
-            onSelect={setCustomColor}
-            onClose={() => setPickerVisible(false)}
+            initialColor={accent}
+            onClose={(color) => {
+              setCustomColor(color);
+              setPickerVisible(false);
+            }}
           />
         </View>
 

@@ -8,6 +8,8 @@ import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { theme } from '../theme';
 import { sendMessage } from '../services/AiCharacterService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import ColorPickerModal from '../components/ColorPickerModal';
+import { api } from '@/core';
 
 interface AiChatMessage {
   id: string;
@@ -32,7 +34,20 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [isTyping, setIsTyping] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chatBackgroundColor, setChatBackgroundColor] = useState('#000000');
+  const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    // Load chat background preference for AI character
+    api.get<{ backgroundColor: string }>(`/api/chat-prefs/ai_character/${characterId}`)
+      .then(res => {
+        setChatBackgroundColor(res.backgroundColor);
+      })
+      .catch(() => {
+        setChatBackgroundColor('#000000');
+      });
+  }, [characterId]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -87,6 +102,16 @@ export default function ChatScreen({ route, navigation }: Props) {
         },
       ]
     );
+  };
+
+  const saveChatBackground = async (color: string) => {
+    try {
+      await api.put(`/api/chat-prefs/ai_character/${characterId}`, { backgroundColor: color });
+      setChatBackgroundColor(color);
+      setIsColorPickerVisible(false);
+    } catch (err) {
+      // silently fail, keep current color
+    }
   };
 
   const TypingIndicator = () => {
@@ -152,15 +177,20 @@ export default function ChatScreen({ route, navigation }: Props) {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: chatBackgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? TAB_BAR_HEIGHT + insets.bottom + 8 : 0}
     >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{characterName}</Text>
-        <TouchableOpacity onPress={handleClear}>
-          <Text style={styles.headerButton}>Очистить</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setIsColorPickerVisible(true)} style={styles.colorPickerBtn}>
+            <Text style={styles.colorPickerText}>🎨</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleClear}>
+            <Text style={styles.headerButton}>Очистить</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <FlatList
         ref={flatListRef}
@@ -195,11 +225,29 @@ export default function ChatScreen({ route, navigation }: Props) {
           <Text style={styles.sendBtnText}>→</Text>
         </TouchableOpacity>
       </View>
+
+      <ColorPickerModal
+        visible={isColorPickerVisible}
+        initialColor={chatBackgroundColor}
+        onClose={saveChatBackground}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  colorPickerBtn: {
+    marginLeft: 8,
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  colorPickerText: {
+    fontSize: 14,
+    color: theme.colors.text,
+  },
   container: { flex: 1, backgroundColor: theme.colors.bg },
   centered: { justifyContent: 'center', alignItems: 'center' },
   header: {
@@ -212,6 +260,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(25,25,27,0.65)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerTitle: { fontSize: 18, fontWeight: '600', color: theme.colors.text, letterSpacing: 0.5 },
   headerButton: { fontSize: 14, color: theme.colors.danger, fontWeight: '600' },
