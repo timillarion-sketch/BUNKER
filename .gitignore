@@ -58,3 +58,6 @@ Thumbs.db
 bunker_backup.tar
 repomix-output.xml
 nginx.conf.bak
+
+# Session logs
+session-*.md
