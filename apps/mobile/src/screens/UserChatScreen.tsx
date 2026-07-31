@@ -2,12 +2,13 @@ import React, {
   useState, useEffect, useRef, useCallback, useMemo
 } from 'react';
 import {
-  View, Text, FlatList, TextInput, Image, ImageBackground,
+  View, Text, FlatList, TextInput, Image, ImageBackground, ScrollView,
   TouchableOpacity, StyleSheet, Alert,
   KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useAccent } from '../core/AccentContext';
 import { api } from '@/core';
@@ -76,6 +77,8 @@ export default function UserChatScreen({
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<{ uri: string; type: string }[]>([]);
+  const MAX_ATTACHMENTS = 10;
 
   useEffect(() => {
     setImageLoadFailed(false);
@@ -290,6 +293,64 @@ export default function UserChatScreen({
     }
   };
 
+  const appendAttachments = (items: { uri: string; type: string }[]) => {
+    setAttachedFiles(prev => {
+      const merged = [...prev, ...items];
+      return merged.slice(0, MAX_ATTACHMENTS);
+    });
+  };
+
+  const pickMedia = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Доступ запрещён", "Разрешите доступ к медиатеке в настройках.");
+      return;
+    }
+    const remaining = MAX_ATTACHMENTS - attachedFiles.length;
+    if (remaining <= 0) {
+      Alert.alert("Лимит", `Можно прикрепить не более ${MAX_ATTACHMENTS} файлов.`);
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'videos'],
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      quality: 1,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    appendAttachments(result.assets.map(a => ({ uri: a.uri, type: a.mimeType ?? 'image/*' })));
+  };
+
+  const pickDocument = async () => {
+    const remaining = MAX_ATTACHMENTS - attachedFiles.length;
+    if (remaining <= 0) {
+      Alert.alert("Лимит", `Можно прикрепить не более ${MAX_ATTACHMENTS} файлов.`);
+      return;
+    }
+    const result = await DocumentPicker.getDocumentAsync({
+      multiple: true,
+      type: ['image/*', 'video/*', 'application/pdf', 'text/*'],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    appendAttachments(result.assets.slice(0, remaining).map(a => ({
+      uri: a.uri,
+      type: a.mimeType ?? 'application/octet-stream',
+    })));
+  };
+
+  const onAttachPress = () => {
+    Alert.alert("Прикрепить", "Выберите тип вложения", [
+      { text: "Отмена", style: "cancel" },
+      { text: "Фото/Видео", onPress: () => { pickMedia(); } },
+      { text: "Файл", onPress: () => { pickDocument(); } },
+    ]);
+  };
+
+  const removeAttachment = (uri: string) => {
+    setAttachedFiles(prev => prev.filter(f => f.uri !== uri));
+  };
+
   const handleAcceptContact = async () => {
     if (!contactStatus || contactActionLoading) return;
     setContactActionLoading(true);
@@ -460,7 +521,41 @@ export default function UserChatScreen({
         />
       )}
 
+      {attachedFiles.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.attachmentsRow}
+          contentContainerStyle={styles.attachmentsContent}
+        >
+          {attachedFiles.map((file, idx) => {
+            const isImage = file.type.startsWith('image/');
+            return (
+              <View key={`${file.uri}_${idx}`} style={styles.attachThumb}>
+                {isImage ? (
+                  <Image source={{ uri: file.uri }} style={styles.attachThumbImg} />
+                ) : (
+                  <View style={[styles.attachThumbImg, styles.attachThumbIconWrap]}>
+                    <Text style={styles.attachThumbIcon}>📄</Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.attachRemove}
+                  onPress={() => removeAttachment(file.uri)}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Text style={styles.attachRemoveText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
+
       <View style={[styles.inputRow, { borderTopColor: accent + '33', paddingBottom: Platform.OS === 'android' ? TAB_BAR_HEIGHT + insets.bottom : Math.max(insets.bottom, 16) }]}> 
+        <TouchableOpacity onPress={onAttachPress} style={styles.attachBtn}>
+          <Text style={styles.attachBtnText}>📎</Text>
+        </TouchableOpacity>
         <TextInput
           value={input}
           onChangeText={setInput}
@@ -517,6 +612,29 @@ const styles = StyleSheet.create({
   bubbleThem: { backgroundColor: 'rgba(25,25,27,0.65)', borderColor: 'rgba(255,255,255,0.08)' },
   msgText: { color: '#c0c0e0', fontSize: 15, lineHeight: 21 },
   msgMeta: { color: '#404060', fontSize: 10, marginTop: 4, textAlign: 'right' },
+  attachmentsRow: { maxHeight: 64, paddingTop: 8 },
+  attachmentsContent: { paddingHorizontal: 12, gap: 8, alignItems: 'center' },
+  attachThumb: {
+    width: 48, height: 48, borderRadius: 8, overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  attachThumbImg: { width: 48, height: 48 },
+  attachThumbIconWrap: { alignItems: 'center', justifyContent: 'center' },
+  attachThumbIcon: { fontSize: 20 },
+  attachRemove: {
+    position: 'absolute', top: 2, right: 2,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  attachRemoveText: { color: '#fff', fontSize: 11, lineHeight: 13 },
+  attachBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  attachBtnText: { fontSize: 18 },
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingVertical: 10,
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', gap: 10,
