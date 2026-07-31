@@ -110,7 +110,7 @@ export default function ChatScreen({ route, navigation }: Props) {
       setChatBackgroundColor(color);
       setIsColorPickerVisible(false);
     } catch (err) {
-      // silently fail, keep current color
+      console.error('BG SAVE ERROR:', err);
     }
   };
 

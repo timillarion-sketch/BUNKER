@@ -4,9 +4,10 @@ import React, {
 import {
   View, Text, FlatList, TextInput, Image,
   TouchableOpacity, StyleSheet, Alert,
-  KeyboardAvoidingView, Platform, Keyboard,
+  KeyboardAvoidingView, Platform, Keyboard, ImageEditor,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useAccent } from '../core/AccentContext';
 import { api } from '@/core';
@@ -342,6 +343,12 @@ export default function UserChatScreen({
         <View style={styles.e2eTag}>
           <Text style={styles.e2eText}>🔒 E2E</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => setIsColorPickerVisible(true)}
+          style={{ marginLeft: 8, padding: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
+        >
+          <Text style={{ fontSize: 16, color: '#e0e0ff' }}>🎨</Text>
+        </TouchableOpacity>
       </View>
 
       {contactStatus && contactStatus.status === "pending" && !contactStatus.isRequester ? (
@@ -411,13 +418,6 @@ export default function UserChatScreen({
           onContentSizeChange={() => listRef.current?.scrollToEnd()}
         />
       )}
-
-      <TouchableOpacity
-        onPress={() => setIsColorPickerVisible(true)}
-        style={styles.colorPickerBtn}
-      >
-        <Text style={styles.colorPickerText}>🎨 Цвет фона</Text>
-      </TouchableOpacity>
 
       <View style={[styles.inputRow, { borderTopColor: accent + '33', paddingBottom: Platform.OS === 'android' ? TAB_BAR_HEIGHT + insets.bottom : Math.max(insets.bottom, 16) }]}> 
         <TextInput
