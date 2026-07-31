@@ -1,9 +1,20 @@
 import { useState, useCallback } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { Paths, File } from 'expo-file-system';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { Image } from 'react-native';
 import { api, API_URL } from '@/core';
 
 type UploadType = 'avatar' | 'chat_wallpaper';
+
+const MAX_FILE_SIZE_BYTES = 200 * 1024;
+const TARGET_LONG_SIDE: Record<UploadType, number> = { avatar: 512, chat_wallpaper: 1080 };
+const COMPRESS: Record<UploadType, number> = { avatar: 0.9, chat_wallpaper: 0.8 };
+
+const getImageSize = (uri: string): Promise<{ width: number; height: number }> =>
+  new Promise((resolve, reject) => {
+    Image.getSize(uri, (w, h) => resolve({ width: w, height: h }), reject);
+  });
 
 interface UseImageUploadReturn {
   pickAndUploadImage: (type: UploadType) => Promise<string>;
@@ -48,6 +59,23 @@ export function useImageUpload(): UseImageUploadReturn {
       const dest = new File(Paths.cache, `${Date.now()}.webp`);
       await source.copy(dest);
       uriToUse = dest.uri;
+    }
+
+    const originalSize = new File(uriToUse).size;
+    if (originalSize === null || originalSize > MAX_FILE_SIZE_BYTES) {
+      try {
+        const { width, height } = await getImageSize(uriToUse);
+        const longSide = Math.max(width, height);
+        const scale = Math.min(1, TARGET_LONG_SIDE[type] / longSide);
+        const actions = scale < 1 ? [{ resize: { width: Math.round(width * scale) } }] : [];
+        const result = await manipulateAsync(uriToUse, actions, {
+          compress: COMPRESS[type],
+          format: SaveFormat.WEBP,
+        });
+        uriToUse = result.uri;
+      } catch (err) {
+        console.warn('Image compress failed, uploading original:', err);
+      }
     }
 
     setIsUploading(true);

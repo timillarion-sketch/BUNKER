@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import {
-  View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform,
+  View, Text, FlatList, TextInput, ImageBackground, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform,
   ActivityIndicator, Alert, Animated, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,19 +35,30 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chatBackgroundColor, setChatBackgroundColor] = useState('#000000');
+  const [backgroundType, setBackgroundType] = useState<'color' | 'image'>('color');
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     // Load chat background preference for AI character
-    api.get<{ backgroundColor: string }>(`/api/chat-prefs/ai_character/${characterId}`)
+    api.get<{ backgroundType: string; backgroundColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/ai_character/${characterId}`)
       .then(res => {
-        setChatBackgroundColor(res.backgroundColor);
+        setBackgroundType(res.backgroundType === 'image' ? 'image' : 'color');
+        setChatBackgroundColor(res.backgroundColor || '#000000');
+        setBackgroundImageUrl(res.backgroundImageUrl ?? null);
       })
       .catch(() => {
+        setBackgroundType('color');
         setChatBackgroundColor('#000000');
+        setBackgroundImageUrl(null);
       });
   }, [characterId]);
+
+  useEffect(() => {
+    setImageLoadFailed(false);
+  }, [backgroundImageUrl]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
@@ -104,10 +115,24 @@ export default function ChatScreen({ route, navigation }: Props) {
     );
   };
 
-  const saveChatBackground = async (color: string) => {
+  const saveChatBackground = async (value: string, kind?: 'color' | 'image') => {
     try {
-      await api.put(`/api/chat-prefs/ai_character/${characterId}`, { backgroundColor: color });
-      setChatBackgroundColor(color);
+      if (kind === 'image') {
+        await api.put(`/api/chat-prefs/ai_character/${characterId}`, {
+          backgroundType: 'image',
+          backgroundImageUrl: value,
+        });
+        setBackgroundType('image');
+        setBackgroundImageUrl(value);
+      } else {
+        await api.put(`/api/chat-prefs/ai_character/${characterId}`, {
+          backgroundType: 'color',
+          backgroundColor: value,
+        });
+        setBackgroundType('color');
+        setChatBackgroundColor(value);
+        setBackgroundImageUrl(null);
+      }
       setIsColorPickerVisible(false);
     } catch (err) {
       console.error('BG SAVE ERROR:', err);
@@ -175,12 +200,28 @@ export default function ChatScreen({ route, navigation }: Props) {
     );
   };
 
+  const bgImageSource = useMemo(
+    () => (backgroundImageUrl ? { uri: backgroundImageUrl } : null),
+    [backgroundImageUrl],
+  );
+  const showImage = backgroundType === 'image' && bgImageSource !== null && !imageLoadFailed;
+
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: chatBackgroundColor }]}
+      style={[styles.container, showImage ? null : { backgroundColor: chatBackgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? TAB_BAR_HEIGHT + insets.bottom + 8 : 0}
     >
+      {showImage && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <ImageBackground
+            source={bgImageSource}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onError={() => setImageLoadFailed(true)}
+          />
+        </View>
+      )}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{characterName}</Text>
         <View style={styles.headerActions}>
@@ -229,6 +270,7 @@ export default function ChatScreen({ route, navigation }: Props) {
       <ColorPickerModal
         visible={isColorPickerVisible}
         initialColor={chatBackgroundColor}
+        allowImage
         onClose={saveChatBackground}
       />
     </KeyboardAvoidingView>

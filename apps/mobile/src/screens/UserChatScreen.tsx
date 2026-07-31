@@ -1,10 +1,10 @@
 import React, {
-  useState, useEffect, useRef, useCallback
+  useState, useEffect, useRef, useCallback, useMemo
 } from 'react';
 import {
-  View, Text, FlatList, TextInput, Image,
+  View, Text, FlatList, TextInput, Image, ImageBackground,
   TouchableOpacity, StyleSheet, Alert,
-  KeyboardAvoidingView, Platform, Keyboard, ImageEditor,
+  KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -72,16 +72,27 @@ export default function UserChatScreen({
   const isIncognito = mode === 'incognito';
 
   const [chatBackgroundColor, setChatBackgroundColor] = useState('#000000');
+  const [backgroundType, setBackgroundType] = useState<'color' | 'image'>('color');
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
 
   useEffect(() => {
+    setImageLoadFailed(false);
+  }, [backgroundImageUrl]);
+
+  useEffect(() => {
     // Load chat background preference
-    api.get<{ backgroundColor: string }>(`/api/chat-prefs/p2p/${peerId}`)
+    api.get<{ backgroundType: string; backgroundColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/p2p/${peerId}`)
       .then(res => {
-        setChatBackgroundColor(res.backgroundColor);
+        setBackgroundType(res.backgroundType === 'image' ? 'image' : 'color');
+        setChatBackgroundColor(res.backgroundColor || '#000000');
+        setBackgroundImageUrl(res.backgroundImageUrl ?? null);
       })
       .catch(() => {
+        setBackgroundType('color');
         setChatBackgroundColor('#000000');
+        setBackgroundImageUrl(null);
       });
 
     const controller = new AbortController();
@@ -255,13 +266,27 @@ export default function UserChatScreen({
     }
   }, [input, myId, sendingRef, peerId]);
 
-  const saveChatBackground = async (color: string) => {
+  const saveChatBackground = async (value: string, kind?: 'color' | 'image') => {
     try {
-      await api.put(`/api/chat-prefs/p2p/${peerId}`, { backgroundColor: color });
-      setChatBackgroundColor(color);
+      if (kind === 'image') {
+        await api.put(`/api/chat-prefs/p2p/${peerId}`, {
+          backgroundType: 'image',
+          backgroundImageUrl: value,
+        });
+        setBackgroundType('image');
+        setBackgroundImageUrl(value);
+      } else {
+        await api.put(`/api/chat-prefs/p2p/${peerId}`, {
+          backgroundType: 'color',
+          backgroundColor: value,
+        });
+        setBackgroundType('color');
+        setChatBackgroundColor(value);
+        setBackgroundImageUrl(null);
+      }
       setIsColorPickerVisible(false);
     } catch (err) {
-      // silently fail, keep current color
+      console.error('BG SAVE ERROR:', err);
     }
   };
 
@@ -320,12 +345,28 @@ export default function UserChatScreen({
     );
   };
 
+  const bgImageSource = useMemo(
+    () => (backgroundImageUrl ? { uri: backgroundImageUrl } : null),
+    [backgroundImageUrl],
+  );
+  const showImage = backgroundType === 'image' && bgImageSource !== null && !imageLoadFailed;
+
   return (
     <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: chatBackgroundColor }]}
+      style={[styles.root, showImage ? null : { backgroundColor: chatBackgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? TAB_BAR_HEIGHT + insets.bottom + 8 : 0}
     >
+      {showImage && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <ImageBackground
+            source={bgImageSource}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onError={() => setImageLoadFailed(true)}
+          />
+        </View>
+      )}
       <View style={[styles.peerHeader, { borderBottomColor: accent + '33' }]}>
         <View style={[styles.peerBadge, { borderColor: accent }]}>
           <Text style={[styles.peerLabel, { color: accent }]}>
@@ -444,6 +485,7 @@ export default function UserChatScreen({
       <ColorPickerModal
         visible={isColorPickerVisible}
         initialColor={chatBackgroundColor}
+        allowImage
         onClose={saveChatBackground}
       />
     </KeyboardAvoidingView>
@@ -451,23 +493,6 @@ export default function UserChatScreen({
 }
 
 const styles = StyleSheet.create({
-  colorPickerBtn: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignSelf: 'flex-end',
-    marginHorizontal: 8,
-    marginTop: 4,
-  },
-  colorPickerText: {
-    color: '#e0e0ff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
   root: { flex: 1, backgroundColor: '#050508' },
   peerHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

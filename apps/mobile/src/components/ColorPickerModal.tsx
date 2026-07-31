@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Modal, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { useImageUpload } from "../hooks/useImageUpload";
 
 const PRESET_COLORS = [
   "#000000", "#1a1a1a", "#333333", "#4d4d4d",
@@ -15,15 +16,26 @@ const PRESET_COLORS = [
 interface ColorPickerModalProps {
   visible: boolean;
   initialColor: string;
-  onClose: (color: string) => void;
+  allowImage?: boolean;
+  onClose: (value: string, kind?: "color" | "image") => void;
 }
 
-export default function ColorPickerModal({ visible, initialColor, onClose }: ColorPickerModalProps) {
+export default function ColorPickerModal({ visible, initialColor, allowImage = false, onClose }: ColorPickerModalProps) {
   const [selectedColor, setSelectedColor] = useState(initialColor);
+  const { pickAndUploadImage, isUploading, error } = useImageUpload();
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
-    onClose(color);
+    onClose(color, "color");
+  };
+
+  const handleUploadPhoto = async () => {
+    try {
+      const url = await pickAndUploadImage("chat_wallpaper");
+      onClose(url, "image");
+    } catch {
+      // error state is handled by the hook and displayed below
+    }
   };
 
   return (
@@ -40,7 +52,21 @@ export default function ColorPickerModal({ visible, initialColor, onClose }: Col
               />
             ))}
           </View>
-          <TouchableOpacity style={styles.closeButton} onPress={() => onClose(selectedColor)}>
+          {allowImage && (
+            <TouchableOpacity
+              style={[styles.uploadButton, isUploading && styles.uploadButtonDisabled]}
+              onPress={handleUploadPhoto}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <Text style={styles.uploadButtonText}>Загрузить фото</Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <TouchableOpacity style={styles.closeButton} onPress={() => onClose(selectedColor, "color")}>
             <Text style={styles.closeText}>Закрыть</Text>
           </TouchableOpacity>
         </View>
@@ -83,6 +109,27 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1,
     borderColor: "#333333",
+  },
+  uploadButton: {
+    backgroundColor: "#4a5568",
+    padding: 12,
+    borderRadius: 6,
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  uploadButtonDisabled: {
+    opacity: 0.6,
+  },
+  uploadButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  errorText: {
+    color: "#ff6b6b",
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 10,
   },
   closeButton: {
     backgroundColor: "#333333",
