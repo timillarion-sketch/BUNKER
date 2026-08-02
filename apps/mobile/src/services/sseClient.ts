@@ -1,7 +1,7 @@
 import EventSource from "react-native-sse";
 import { API_URL } from "@/core";
 
-type SseEventName = "p2p_message" | "contact_request" | "chat_deleted" | "profile_updated";
+type SseEventName = "p2p_message" | "contact_request" | "chat_deleted" | "profile_updated" | "p2p_message_deleted";
 type SseEventHandler = (data: string | null) => void;
 
 export class SseConnection {
@@ -56,6 +56,13 @@ export class SseConnection {
 
     this.eventSource.addEventListener("profile_updated", (event) => {
       const handlers = this.listeners.get("profile_updated");
+      if (handlers) {
+        handlers.forEach((h) => h(event.data));
+      }
+    });
+
+    this.eventSource.addEventListener("p2p_message_deleted", (event) => {
+      const handlers = this.listeners.get("p2p_message_deleted");
       if (handlers) {
         handlers.forEach((h) => h(event.data));
       }

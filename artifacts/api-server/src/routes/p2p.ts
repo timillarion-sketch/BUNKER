@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Response } from "express";
 import { z } from "zod";
 import { db, usersTable, p2pMessagesTable, p2pDeletionsTable, contactsTable } from "@workspace/db";
-import { eq, or, and, lt, desc } from "drizzle-orm";
+import { eq, or, and, lt, desc, inArray } from "drizzle-orm";
 import { sendSseToUser } from "../lib/sse-manager";
 import { publish } from "../lib/sse-events";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
@@ -544,6 +544,97 @@ router.delete("/p2p/history/:peerId", requireAuth, async (req: AuthenticatedRequ
     logger.error({ err, peerId, mode, userId }, "Failed to delete p2p history");
     const message = err instanceof Error ? err.message : "Unknown error";
     res.status(500).json({ error: "Не удалось удалить чат", detail: message });
+  }
+});
+
+const deleteMessagesSchema = z.object({
+  messageIds: z.array(z.coerce.number().int().positive()).min(1, "Нужен хотя бы один id сообщения").max(100, "Максимум 100 сообщений за раз"),
+  mode: deleteModeSchema,
+});
+
+router.delete("/p2p/messages", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = Number(req.userId);
+
+  const parsed = deleteMessagesSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Некорректные параметры" });
+    return;
+  }
+
+  const { messageIds, mode } = parsed.data;
+
+  try {
+    const [user] = await db
+      .select({ bunkerId: usersTable.bunkerId })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    const myId = user?.bunkerId;
+    if (!myId) {
+      res.status(400).json({ error: "Сначала зарегистрируйте BNKR-ID" });
+      return;
+    }
+
+    const messages = await db
+      .select()
+      .from(p2pMessagesTable)
+      .where(inArray(p2pMessagesTable.id, messageIds));
+
+    if (messages.length === 0) {
+      res.status(404).json({ error: "Сообщения не найдены" });
+      return;
+    }
+
+    const participantMessages = messages.filter(
+      (m) => m.senderId === myId || m.receiverId === myId,
+    );
+    if (participantMessages.length !== messages.length) {
+      res.status(403).json({ error: "Можно удалять только сообщения из своих диалогов" });
+      return;
+    }
+
+    if (mode === "both") {
+      const foreign = messages.filter((m) => m.senderId !== myId);
+      if (foreign.length > 0) {
+        res.status(400).json({ error: "Через both можно удалять только свои сообщения" });
+        return;
+      }
+    }
+
+    const now = new Date();
+    const rows = await db
+      .update(p2pMessagesTable)
+      .set({ deletedAt: now, deletedBy: myId })
+      .where(inArray(p2pMessagesTable.id, messages.map((m) => m.id)))
+      .returning({ id: p2pMessagesTable.id });
+
+    const deletedIds = rows.map((r) => r.id);
+
+    if (mode === "both" && deletedIds.length > 0) {
+      const recipientBunkerIds = [...new Set(messages.map((m) => m.receiverId))];
+      const recipients = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(inArray(usersTable.bunkerId, recipientBunkerIds));
+
+      for (const recipient of recipients) {
+        try {
+          await sendSseToUser(String(recipient.id), "p2p_message_deleted", {
+            peerId: myId,
+            messageIds: deletedIds,
+          });
+        } catch (sseErr) {
+          logger.error({ err: sseErr, recipientId: recipient.id }, "sendSseToUser for p2p_message_deleted failed");
+        }
+      }
+    }
+
+    res.json({ deleted: deletedIds });
+  } catch (err) {
+    logger.error({ err, messageIds, mode, userId }, "Failed to delete p2p messages");
+    const message = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: "Не удалось удалить сообщения", detail: message });
   }
 });
 

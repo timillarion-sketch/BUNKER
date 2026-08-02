@@ -3,10 +3,11 @@ import React, {
 } from 'react';
 import {
   View, Text, FlatList, TextInput, Image, ImageBackground, ScrollView,
-  TouchableOpacity, StyleSheet, Alert, Linking,
+  TouchableOpacity, StyleSheet, Alert, Linking, Modal,
   KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
@@ -21,6 +22,9 @@ import {
   fetchP2pHistory,
   onP2pMessage,
   onProfileUpdated,
+  onMessageDeleted,
+  deleteP2pMessages,
+  deleteChat,
   fetchContactStatus,
   type P2pServerMessage,
   type ContactStatus,
@@ -34,6 +38,8 @@ interface P2PMessage {
   createdAt: number;
   status: 'sending' | 'sent' | 'error';
   isOptimistic: boolean;
+  deletedAt?: number | null;
+  deletedBy?: string | null;
 }
 
 export default function UserChatScreen({
@@ -84,6 +90,8 @@ export default function UserChatScreen({
   const [colorPickerMode, setColorPickerMode] = useState<'background' | 'text'>('background');
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<{ uri: string; type: string }[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<P2PMessage | null>(null);
+  const [bothDeletedIds, setBothDeletedIds] = useState<Set<number>>(new Set());
   const MAX_ATTACHMENTS = 10;
 
   useEffect(() => {
@@ -124,6 +132,8 @@ export default function UserChatScreen({
             createdAt: new Date(m.createdAt).getTime(),
             status: m.status === "sent" ? "sent" as const : "sent" as const,
             isOptimistic: false,
+            deletedAt: m.deletedAt ? new Date(m.deletedAt).getTime() : null,
+            deletedBy: m.deletedBy ?? null,
           })),
         );
       } catch (err: unknown) {
@@ -215,6 +225,46 @@ export default function UserChatScreen({
         if (updatedPeerId === peerId) {
           setPeerAvatarUrl(avatarUrl ?? null);
         }
+      } catch {}
+    });
+    return unsub;
+  }, [peerId]);
+
+  useEffect(() => {
+    if (!peerId) return;
+    let mounted = true;
+    AsyncStorage.getItem(`p2p_deleted_both_${peerId}`).then((raw) => {
+      if (!raw || !mounted) return;
+      try {
+        const ids = JSON.parse(raw) as number[];
+        setBothDeletedIds(new Set(ids.filter((n) => typeof n === 'number')));
+      } catch {}
+    });
+    return () => { mounted = false; };
+  }, [peerId]);
+
+  useEffect(() => {
+    if (!peerId) return;
+    const unsub = onMessageDeleted((data) => {
+      if (!data) return;
+      try {
+        const { peerId: deletedPeerId, messageIds } = JSON.parse(data);
+        if (deletedPeerId !== peerId || !Array.isArray(messageIds)) return;
+        const numericIds = messageIds.filter((n: unknown) => typeof n === 'number');
+        if (numericIds.length === 0) return;
+        setBothDeletedIds((prev) => {
+          const next = new Set(prev);
+          numericIds.forEach((id: number) => next.add(id));
+          AsyncStorage.setItem(`p2p_deleted_both_${peerId}`, JSON.stringify([...next]));
+          return next;
+        });
+        setMessages((prev) =>
+          prev.map((m) =>
+            typeof m.id === 'number' && numericIds.includes(m.id)
+              ? { ...m, deletedAt: Date.now(), deletedBy: peerId }
+              : m,
+          ),
+        );
       } catch {}
     });
     return unsub;
@@ -403,6 +453,57 @@ export default function UserChatScreen({
     }
   };
 
+  const handleDeleteMessage = async (mode: "self" | "both") => {
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    if (!target || typeof target.id !== 'number' || !myId) return;
+    const messageId = target.id;
+
+    try {
+      await deleteP2pMessages([messageId], mode);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, deletedAt: Date.now(), deletedBy: myId } : m,
+        ),
+      );
+      if (mode === 'both') {
+        setBothDeletedIds((prev) => {
+          const next = new Set(prev);
+          next.add(messageId);
+          AsyncStorage.setItem(`p2p_deleted_both_${peerId}`, JSON.stringify([...next]));
+          return next;
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Не удалось удалить сообщение';
+      Alert.alert('Ошибка', msg);
+    }
+  };
+
+  const handleClearChat = () => {
+    Alert.alert('Очистить чат', 'Вся переписка с собеседником будет удалена.', [
+      { text: 'Только у меня', style: 'destructive', onPress: () => clearChat('self') },
+      { text: 'У всех', style: 'destructive', onPress: () => clearChat('both') },
+      { text: 'Отмена', style: 'cancel' },
+    ]);
+  };
+
+  const clearChat = async (mode: "self" | "both") => {
+    try {
+      await deleteChat(peerId, mode);
+      setMessages([]);
+      AsyncStorage.removeItem(`p2p_deleted_both_${peerId}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Не удалось очистить чат';
+      Alert.alert('Ошибка', msg);
+    }
+  };
+
+  const isMessageDeleted = (m: P2PMessage): boolean =>
+    m.deletedAt != null &&
+    (m.deletedBy === myId ||
+      (typeof m.id === 'number' && bothDeletedIds.has(m.id)));
+
   const openAttachment = (att: AttachmentMeta) => {
     if (att.type.startsWith('image/')) {
       setViewerUri(att.url);
@@ -445,16 +546,29 @@ export default function UserChatScreen({
       item.status === 'sending' ? ' ·' :
       item.status === 'sent' ? ' ✓' :
       ' ✗';
+    if (isMessageDeleted(item)) {
+      return (
+        <View style={[styles.msgRow, isMe ? styles.msgRowMe : styles.msgRowThem]}>
+          <View style={[styles.bubble, styles.bubbleDeleted]}>
+            <Text style={styles.deletedText}>Сообщение удалено</Text>
+          </View>
+        </View>
+      );
+    }
     const hasContent = item.text || (item.attachments && item.attachments.length > 0);
     if (!hasContent) return null;
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowMe : styles.msgRowThem]}>
-        <View style={[
-          styles.bubble,
-          isMe
-            ? [styles.bubbleMe, { backgroundColor: accent + '22', borderColor: accent }]
-            : styles.bubbleThem
-        ]}>
+        <TouchableOpacity
+          onLongPress={() => setDeleteTarget(item)}
+          activeOpacity={0.8}
+          style={[
+            styles.bubble,
+            isMe
+              ? [styles.bubbleMe, { backgroundColor: accent + '22', borderColor: accent }]
+              : styles.bubbleThem
+          ]}
+        >
           {item.text ? (
             <Text style={[styles.msgText, isMe ? { color: '#e0e0ff' } : { color: chatTextColor }]}>
               {item.text}
@@ -469,7 +583,7 @@ export default function UserChatScreen({
             })}
             {isMe && statusIcon}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -524,6 +638,12 @@ export default function UserChatScreen({
           style={{ marginLeft: 8, padding: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
         >
           <Text style={{ fontSize: 16, color: '#e0e0ff' }}>А</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleClearChat}
+          style={{ marginLeft: 8, padding: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
+        >
+          <Text style={{ fontSize: 16, color: '#ff6b6b' }}>🗑</Text>
         </TouchableOpacity>
       </View>
 
@@ -664,12 +784,99 @@ export default function UserChatScreen({
         uri={viewerUri}
         onClose={() => setViewerUri(null)}
       />
+
+      <Modal
+        visible={deleteTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteTarget(null)}
+      >
+        <View style={styles.deleteMenuOverlay}>
+          <View style={styles.deleteMenuCard}>
+            <Text style={styles.deleteMenuTitle}>🗑 Удалить сообщение?</Text>
+            <TouchableOpacity
+              style={styles.deleteMenuBtn}
+              onPress={() => handleDeleteMessage('self')}
+            >
+              <Text style={styles.deleteMenuBtnText}>Удалить у себя</Text>
+            </TouchableOpacity>
+            {deleteTarget && deleteTarget.senderId === myId ? (
+              <TouchableOpacity
+                style={styles.deleteMenuBtn}
+                onPress={() => handleDeleteMessage('both')}
+              >
+                <Text style={styles.deleteMenuBtnText}>Удалить у всех</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={[styles.deleteMenuBtn, styles.deleteMenuCancel]}
+              onPress={() => setDeleteTarget(null)}
+            >
+              <Text style={[styles.deleteMenuBtnText, styles.deleteMenuCancelText]}>Отмена</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#050508' },
+  bubbleDeleted: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 7,
+  },
+  deletedText: {
+    color: '#505060',
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  deleteMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  deleteMenuCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#12121a',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    padding: 20,
+    gap: 10,
+  },
+  deleteMenuTitle: {
+    color: '#e0e0ff',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  deleteMenuBtn: {
+    backgroundColor: 'rgba(255,60,60,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,60,60,0.4)',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  deleteMenuBtnText: {
+    color: '#ff6b6b',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  deleteMenuCancel: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  deleteMenuCancelText: {
+    color: '#9a9ab0',
+  },
   peerHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1,

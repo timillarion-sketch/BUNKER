@@ -8,6 +8,8 @@ export interface P2pServerMessage {
   receiverId: string;
   content: string;
   attachments?: AttachmentMeta[];
+  deletedAt?: string | null;
+  deletedBy?: string | null;
   status: "sent" | "delivered" | "read";
   createdAt: string;
   contactPending?: boolean;
@@ -101,6 +103,20 @@ export async function fetchContactStatus(peerId: string): Promise<{ contact: Con
 
 export async function deleteChat(peerId: string, mode: "self" | "both"): Promise<void> {
   await api.delete(`/api/p2p/history/${peerId}?mode=${mode}`);
+}
+
+export async function deleteP2pMessages(
+  messageIds: number[],
+  mode: "self" | "both",
+): Promise<{ deleted: number[] }> {
+  return api.request<{ deleted: number[] }>("/api/p2p/messages", {
+    method: "DELETE",
+    body: JSON.stringify({ messageIds, mode }),
+  });
+}
+
+export function onMessageDeleted(handler: (data: string | null) => void): () => void {
+  return sseConnection.on("p2p_message_deleted", handler);
 }
 
 export async function initiateChannel(receiverId: string): Promise<{
