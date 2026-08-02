@@ -8,6 +8,7 @@ export const chatDisplayPrefsTable = pgTable("chat_display_prefs", {
   backgroundType: text("background_type", { enum: ["color", "image"] }).notNull().default("color"),
   backgroundColor: text("background_color").notNull().default("#000000"),
   textColor: text("text_color").notNull().default("#ffffff"),
+  ownTextColor: text("own_text_color"),
   backgroundImageUrl: text("background_image_url"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [

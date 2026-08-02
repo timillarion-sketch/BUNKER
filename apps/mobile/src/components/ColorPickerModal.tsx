@@ -22,7 +22,8 @@ const PRESET_COLORS = [
   "#5e5e5e", "#6a6a6a", "#767676", "#828282",
 ];
 
-type ColorPickerMode = "background" | "text";
+type ColorPickerMode = "background" | "ownText" | "peerText";
+type ColorPickerKind = "color" | "image" | "ownText" | "peerText";
 
 interface ColorPickerModalProps {
   visible: boolean;
@@ -30,7 +31,8 @@ interface ColorPickerModalProps {
   allowImage?: boolean;
   mode?: ColorPickerMode;
   onModeChange?: (mode: ColorPickerMode) => void;
-  onClose: (value: string, kind?: "color" | "image" | "text") => void;
+  onClose: (value: string, kind?: ColorPickerKind) => void;
+  peerTextLabel?: string;
 }
 
 export default function ColorPickerModal({
@@ -40,13 +42,14 @@ export default function ColorPickerModal({
   mode = "background",
   onModeChange,
   onClose,
+  peerTextLabel = "Сообщения собеседника",
 }: ColorPickerModalProps) {
   const [selectedColor, setSelectedColor] = useState(initialColor);
   const { pickAndUploadImage, isUploading, error } = useImageUpload();
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color);
-    onClose(color, mode === "text" ? "text" : "color");
+    onClose(color, mode === "background" ? "color" : mode);
   };
 
   const handleUploadPhoto = async () => {
@@ -58,7 +61,10 @@ export default function ColorPickerModal({
     }
   };
 
-  const title = mode === "text" ? "Цвет текста" : "Цвет фона";
+  const title =
+    mode === "background" ? "Цвет фона" :
+    mode === "ownText" ? "Цвет моих сообщений" :
+    `Цвет текста: ${peerTextLabel}`;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -76,11 +82,19 @@ export default function ColorPickerModal({
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modeBtn, mode === "text" && styles.modeBtnActive]}
-                onPress={() => onModeChange("text")}
+                style={[styles.modeBtn, mode === "ownText" && styles.modeBtnActive]}
+                onPress={() => onModeChange("ownText")}
               >
-                <Text style={[styles.modeBtnText, mode === "text" && styles.modeBtnTextActive]}>
-                  Текст
+                <Text style={[styles.modeBtnText, mode === "ownText" && styles.modeBtnTextActive]}>
+                  Мои сообщения
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeBtn, mode === "peerText" && styles.modeBtnActive]}
+                onPress={() => onModeChange("peerText")}
+              >
+                <Text style={[styles.modeBtnText, mode === "peerText" && styles.modeBtnTextActive]}>
+                  {peerTextLabel}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -108,7 +122,7 @@ export default function ColorPickerModal({
             </TouchableOpacity>
           )}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          <TouchableOpacity style={styles.closeButton} onPress={() => onClose(selectedColor, mode === "text" ? "text" : "color")}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => onClose(selectedColor, mode === "background" ? "color" : mode)}>
             <Text style={styles.closeText}>Закрыть</Text>
           </TouchableOpacity>
         </View>

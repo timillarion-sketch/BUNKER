@@ -1,0 +1,1 @@
+ALTER TABLE "chat_display_prefs" ADD COLUMN "own_text_color" text;

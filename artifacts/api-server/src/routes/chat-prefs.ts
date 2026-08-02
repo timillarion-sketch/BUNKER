@@ -1,11 +1,32 @@
 import { Router, type IRouter, type Response } from "express";
+import { z } from "zod";
 import { db, chatDisplayPrefsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 
 const VALID_CHAT_TYPES = ["p2p", "ai_character"] as const;
-const VALID_BACKGROUND_TYPES = ["color", "image"] as const;
 const HEX_REGEX = /^#[0-9a-fA-F]{6}$/;
+
+const putPrefsSchema = z.object({
+  backgroundType: z.enum(["color", "image"]).optional(),
+  backgroundColor: z
+    .string()
+    .regex(HEX_REGEX, { message: "backgroundColor должен быть HEX в формате #RRGGBB (например, #ff0000)" })
+    .optional(),
+  textColor: z
+    .string()
+    .regex(HEX_REGEX, { message: "textColor должен быть HEX в формате #RRGGBB (например, #ffffff)" })
+    .optional(),
+  ownTextColor: z
+    .string()
+    .regex(HEX_REGEX, { message: "ownTextColor должен быть HEX в формате #RRGGBB (например, #e0e0ff)" })
+    .optional(),
+  backgroundImageUrl: z
+    .string()
+    .refine((s) => s.trim().length > 0, { message: "backgroundImageUrl должен быть непустой строкой" })
+    .nullable()
+    .optional(),
+});
 
 class ChatPrefsValidationError extends Error {}
 
@@ -37,6 +58,7 @@ router.get("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
       backgroundType: pref?.backgroundType ?? "color",
       backgroundColor: pref?.backgroundColor ?? "#000000",
       textColor: pref?.textColor ?? "#ffffff",
+      ownTextColor: pref?.ownTextColor ?? (chatType === "ai_character" ? "#ffffff" : "#e0e0ff"),
       backgroundImageUrl: pref?.backgroundImageUrl ?? null,
     });
   } catch (err) {
@@ -49,41 +71,20 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
   const userId = String(req.userId!);
   const chatKey = String(req.params.chatKey);
   const chatType = String(req.params.chatType) as "p2p" | "ai_character";
-  const body = (req.body ?? {}) as {
-    backgroundType?: string;
-    backgroundColor?: string;
-    textColor?: string;
-    backgroundImageUrl?: string | null;
-  };
-
-  const { backgroundType, backgroundColor, textColor, backgroundImageUrl } = body;
 
   if (!VALID_CHAT_TYPES.includes(chatType)) {
     res.status(400).json({ error: `Недопустимый chatType: ${chatType}. Допустимые: ${VALID_CHAT_TYPES.join(", ")}` });
     return;
   }
 
-  if (backgroundType !== undefined && !VALID_BACKGROUND_TYPES.includes(backgroundType as any)) {
-    res.status(400).json({ error: `Недопустимый backgroundType: ${backgroundType}. Допустимые: ${VALID_BACKGROUND_TYPES.join(", ")}` });
+  const parsed = putPrefsSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    res.status(400).json({ error: issue?.message ?? "Некорректные параметры" });
     return;
   }
 
-  if (backgroundColor !== undefined && (typeof backgroundColor !== "string" || !HEX_REGEX.test(backgroundColor))) {
-    res.status(400).json({ error: "backgroundColor должен быть HEX в формате #RRGGBB (например, #ff0000)" });
-    return;
-  }
-
-  if (textColor !== undefined && (typeof textColor !== "string" || !HEX_REGEX.test(textColor))) {
-    res.status(400).json({ error: "textColor должен быть HEX в формате #RRGGBB (например, #ffffff)" });
-    return;
-  }
-
-  if (backgroundImageUrl !== undefined && backgroundImageUrl !== null) {
-    if (typeof backgroundImageUrl !== "string" || backgroundImageUrl.trim().length === 0) {
-      res.status(400).json({ error: "backgroundImageUrl должен быть непустой строкой" });
-      return;
-    }
-  }
+  const { backgroundType, backgroundColor, textColor, ownTextColor, backgroundImageUrl } = parsed.data;
 
   try {
     await db.transaction(async (tx) => {
@@ -101,6 +102,7 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
       const mergedType = (backgroundType ?? existing?.backgroundType ?? "color") as "color" | "image";
       const mergedColor = backgroundColor ?? existing?.backgroundColor ?? "#000000";
       const mergedTextColor = textColor ?? existing?.textColor ?? "#ffffff";
+      const mergedOwnTextColor = ownTextColor ?? existing?.ownTextColor ?? null;
       const mergedUrl =
         mergedType === "image" ? (backgroundImageUrl ?? existing?.backgroundImageUrl ?? null) : null;
 
@@ -117,6 +119,7 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
           backgroundType: mergedType,
           backgroundColor: mergedColor,
           textColor: mergedTextColor,
+          ownTextColor: mergedOwnTextColor,
           backgroundImageUrl: mergedUrl,
         })
         .onConflictDoUpdate({
@@ -129,6 +132,7 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
             backgroundType: mergedType,
             backgroundColor: mergedColor,
             textColor: mergedTextColor,
+            ownTextColor: mergedOwnTextColor,
             backgroundImageUrl: mergedUrl,
             updatedAt: new Date(),
           },

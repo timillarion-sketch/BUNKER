@@ -42,11 +42,12 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [chatBackgroundColor, setChatBackgroundColor] = useState('#000000');
   const [chatTextColor, setChatTextColor] = useState('#ffffff');
+  const [chatOwnTextColor, setChatOwnTextColor] = useState('#ffffff');
   const [backgroundType, setBackgroundType] = useState<'color' | 'image'>('color');
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
-  const [colorPickerMode, setColorPickerMode] = useState<'background' | 'text'>('background');
+  const [colorPickerMode, setColorPickerMode] = useState<'background' | 'ownText' | 'peerText'>('background');
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<{ uri: string; type: string }[]>([]);
   const MAX_ATTACHMENTS = 10;
@@ -54,17 +55,19 @@ export default function ChatScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     // Load chat background preference for AI character
-    api.get<{ backgroundType: string; backgroundColor: string; textColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/ai_character/${characterId}`)
+    api.get<{ backgroundType: string; backgroundColor: string; textColor: string; ownTextColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/ai_character/${characterId}`)
       .then(res => {
         setBackgroundType(res.backgroundType === 'image' ? 'image' : 'color');
         setChatBackgroundColor(res.backgroundColor || '#000000');
         setChatTextColor(res.textColor || '#ffffff');
+        setChatOwnTextColor(res.ownTextColor || '#ffffff');
         setBackgroundImageUrl(res.backgroundImageUrl ?? null);
       })
       .catch(() => {
         setBackgroundType('color');
         setChatBackgroundColor('#000000');
         setChatTextColor('#ffffff');
+        setChatOwnTextColor('#ffffff');
         setBackgroundImageUrl(null);
       });
   }, [characterId]);
@@ -142,9 +145,14 @@ export default function ChatScreen({ route, navigation }: Props) {
     );
   };
 
-  const saveChatBackground = async (value: string, kind?: 'color' | 'image' | 'text') => {
+  const saveChatBackground = async (value: string, kind?: 'color' | 'image' | 'ownText' | 'peerText') => {
     try {
-      if (kind === 'text') {
+      if (kind === 'ownText') {
+        await api.put(`/api/chat-prefs/ai_character/${characterId}`, {
+          ownTextColor: value,
+        });
+        setChatOwnTextColor(value);
+      } else if (kind === 'peerText') {
         await api.put(`/api/chat-prefs/ai_character/${characterId}`, {
           textColor: value,
         });
@@ -295,7 +303,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         )}
         <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
           {item.content ? (
-            <Text style={[styles.msgText, isUser ? styles.userMsgText : { color: chatTextColor }]}>
+            <Text style={[styles.msgText, isUser ? { color: chatOwnTextColor } : { color: chatTextColor }]}>
               {item.content}
             </Text>
           ) : null}
@@ -362,7 +370,7 @@ export default function ChatScreen({ route, navigation }: Props) {
             <Text style={styles.colorPickerText}>🎨</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => { setColorPickerMode('text'); setIsColorPickerVisible(true); }}
+            onPress={() => { setColorPickerMode('peerText'); setIsColorPickerVisible(true); }}
             style={styles.colorPickerBtn}
           >
             <Text style={styles.colorPickerText}>А</Text>
@@ -441,11 +449,12 @@ export default function ChatScreen({ route, navigation }: Props) {
 
       <ColorPickerModal
         visible={isColorPickerVisible}
-        initialColor={colorPickerMode === 'text' ? chatTextColor : chatBackgroundColor}
+        initialColor={colorPickerMode === 'ownText' ? chatOwnTextColor : colorPickerMode === 'peerText' ? chatTextColor : chatBackgroundColor}
         allowImage
         mode={colorPickerMode}
         onModeChange={setColorPickerMode}
         onClose={saveChatBackground}
+        peerTextLabel="Сообщения персонажа"
       />
       <ImageViewerModal
         visible={viewerUri !== null}
@@ -523,7 +532,6 @@ const styles = StyleSheet.create({
   },
   attachmentFileIcon: { fontSize: 20 },
   attachmentFileName: { color: theme.colors.text, fontSize: 13, flexShrink: 1 },
-  userMsgText: { color: '#fff' },
   typingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   typingDot: {
     width: 6, height: 6, borderRadius: 3,

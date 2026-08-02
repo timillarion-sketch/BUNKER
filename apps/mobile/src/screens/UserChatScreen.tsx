@@ -84,11 +84,12 @@ export default function UserChatScreen({
 
   const [chatBackgroundColor, setChatBackgroundColor] = useState('#000000');
   const [chatTextColor, setChatTextColor] = useState('#ffffff');
+  const [chatOwnTextColor, setChatOwnTextColor] = useState('#e0e0ff');
   const [backgroundType, setBackgroundType] = useState<'color' | 'image'>('color');
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
-  const [colorPickerMode, setColorPickerMode] = useState<'background' | 'text'>('background');
+  const [colorPickerMode, setColorPickerMode] = useState<'background' | 'ownText' | 'peerText'>('background');
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<{ uri: string; type: string }[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<P2PMessage | null>(null);
@@ -101,17 +102,19 @@ export default function UserChatScreen({
 
   useEffect(() => {
     // Load chat background preference
-    api.get<{ backgroundType: string; backgroundColor: string; textColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/p2p/${peerId}`)
+    api.get<{ backgroundType: string; backgroundColor: string; textColor: string; ownTextColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/p2p/${peerId}`)
       .then(res => {
         setBackgroundType(res.backgroundType === 'image' ? 'image' : 'color');
         setChatBackgroundColor(res.backgroundColor || '#000000');
         setChatTextColor(res.textColor || '#ffffff');
+        setChatOwnTextColor(res.ownTextColor || '#e0e0ff');
         setBackgroundImageUrl(res.backgroundImageUrl ?? null);
       })
       .catch(() => {
         setBackgroundType('color');
         setChatBackgroundColor('#000000');
         setChatTextColor('#ffffff');
+        setChatOwnTextColor('#e0e0ff');
         setBackgroundImageUrl(null);
       });
 
@@ -340,9 +343,14 @@ export default function UserChatScreen({
     }
   }, [input, myId, sendingRef, peerId, attachedFiles]);
 
-  const saveChatBackground = async (value: string, kind?: 'color' | 'image' | 'text') => {
+  const saveChatBackground = async (value: string, kind?: 'color' | 'image' | 'ownText' | 'peerText') => {
     try {
-      if (kind === 'text') {
+      if (kind === 'ownText') {
+        await api.put(`/api/chat-prefs/p2p/${peerId}`, {
+          ownTextColor: value,
+        });
+        setChatOwnTextColor(value);
+      } else if (kind === 'peerText') {
         await api.put(`/api/chat-prefs/p2p/${peerId}`, {
           textColor: value,
         });
@@ -571,7 +579,7 @@ export default function UserChatScreen({
           ]}
         >
           {item.text ? (
-            <Text style={[styles.msgText, isMe ? { color: '#e0e0ff' } : { color: chatTextColor }]}>
+            <Text style={[styles.msgText, isMe ? { color: chatOwnTextColor } : { color: chatTextColor }]}>
               {item.text}
             </Text>
           ) : null}
@@ -636,7 +644,7 @@ export default function UserChatScreen({
           <Text style={{ fontSize: 16, color: '#e0e0ff' }}>🎨</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => { setColorPickerMode('text'); setIsColorPickerVisible(true); }}
+          onPress={() => { setColorPickerMode('peerText'); setIsColorPickerVisible(true); }}
           style={{ marginLeft: 8, padding: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
         >
           <Text style={{ fontSize: 16, color: '#e0e0ff' }}>А</Text>
@@ -775,7 +783,7 @@ export default function UserChatScreen({
 
       <ColorPickerModal
         visible={isColorPickerVisible}
-        initialColor={colorPickerMode === 'text' ? chatTextColor : chatBackgroundColor}
+        initialColor={colorPickerMode === 'ownText' ? chatOwnTextColor : colorPickerMode === 'peerText' ? chatTextColor : chatBackgroundColor}
         allowImage
         mode={colorPickerMode}
         onModeChange={setColorPickerMode}
