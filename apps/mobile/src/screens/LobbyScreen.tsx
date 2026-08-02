@@ -215,7 +215,7 @@ export default function LobbyScreen() {
         </TouchableOpacity>
       </View>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>ВЫБЕРИТЕ СОБЕСЕДНИКА</Text>
-      <Text style={[styles.memoryHint, { color: theme.colors.textMuted }]}>🌐 — включить общую память (факты синхронизируются в глобальную базу)</Text>
+      <Text style={[styles.memoryHint, { color: theme.colors.textMuted }]}>Управление общей памятью — в 📚 (правый верхний угол)</Text>
       {isLoading && characters.length === 0 && (
         <Text style={[styles.loadingLabel, { color: theme.colors.textMuted }]}>Загрузка персонажей...</Text>
       )}
@@ -258,16 +258,6 @@ export default function LobbyScreen() {
                   удерживай для настройки
                 </Text>
               )}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
-                <Text style={{ color: '#404060', fontSize: 9 }}>🌐</Text>
-                <Switch
-                  value={characterSettings[char.id] ?? false}
-                  onValueChange={(v) => handleToggleMemoryShare(char.id, v)}
-                  trackColor={{ false: '#303045', true: (char.color || accent) + '80' }}
-                  thumbColor={characterSettings[char.id] ? (char.color || accent) : '#606080'}
-                  style={{ transform: [{ scaleX: 0.7 }, { scaleY: 0.7 }] }}
-                />
-              </View>
             </View>
           </TouchableOpacity>
         ))}
@@ -283,6 +273,32 @@ export default function LobbyScreen() {
             <View style={styles.handlebar} />
             <Text style={styles.modalTitle}>📚 Общая память</Text>
             <Text style={styles.modalSubtitle}>Факты, которые помнят все персонажи</Text>
+
+            <Text style={styles.sectionLabel}>ПЕРСОНАЖИ</Text>
+            <ScrollView style={{ maxHeight: 200 }}>
+              {characters.map((char) => (
+                <View
+                  key={char.id}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 8,
+                    backgroundColor: 'rgba(10,10,15,0.4)', borderRadius: 12,
+                    padding: 10, marginBottom: 6,
+                  }}
+                >
+                  <Text style={{ fontSize: 18 }}>{char.emoji}</Text>
+                  <Text style={{ flex: 1, color: '#e0e0ff', fontSize: 13 }} numberOfLines={1}>
+                    {char.name}
+                  </Text>
+                  <Switch
+                    value={characterSettings[char.id] ?? false}
+                    onValueChange={(v) => handleToggleMemoryShare(char.id, v)}
+                    trackColor={{ false: '#303045', true: (char.color || accent) + '80' }}
+                    thumbColor={characterSettings[char.id] ? (char.color || accent) : '#606080'}
+                    style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                  />
+                </View>
+              ))}
+            </ScrollView>
 
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
               <TextInput
