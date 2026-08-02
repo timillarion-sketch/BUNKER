@@ -43,6 +43,8 @@ interface P2PMessage {
   deletedBy?: string | null;
 }
 
+const DELETED_PLACEHOLDER_HIDE_MS = 10 * 60 * 1000;
+
 export default function UserChatScreen({
   route, navigation
 }: any) {
@@ -93,7 +95,9 @@ export default function UserChatScreen({
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<{ uri: string; type: string }[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<P2PMessage | null>(null);
-  const [bothDeletedIds, setBothDeletedIds] = useState<Set<number>>(new Set());
+  const [firstSeen, setFirstSeen] = useState<Record<number, number>>({});
+  const [nowTick, setNowTick] = useState(0);
+  const firstSeenKey = `p2p_deleted_first_seen_${peerId}`;
   const MAX_ATTACHMENTS = 10;
 
   useEffect(() => {
@@ -237,15 +241,57 @@ export default function UserChatScreen({
   useEffect(() => {
     if (!peerId) return;
     let mounted = true;
-    AsyncStorage.getItem(`p2p_deleted_both_${peerId}`).then((raw) => {
+    AsyncStorage.getItem(firstSeenKey).then((raw) => {
       if (!raw || !mounted) return;
       try {
-        const ids = JSON.parse(raw) as number[];
-        setBothDeletedIds(new Set(ids.filter((n) => typeof n === 'number')));
+        const parsed = JSON.parse(raw) as Record<string, number>;
+        const clean: Record<number, number> = {};
+        Object.entries(parsed).forEach(([key, value]) => {
+          const id = Number(key);
+          if (Number.isInteger(id) && typeof value === 'number' && value > 0) {
+            clean[id] = value;
+          }
+        });
+        setFirstSeen(clean);
       } catch {}
     });
     return () => { mounted = false; };
   }, [peerId]);
+
+  useEffect(() => {
+    if (!peerId) return;
+    const now = Date.now();
+    let changed = false;
+    const next = { ...firstSeen };
+    messages.forEach((m) => {
+      if (m.deletedAt != null && typeof m.id === 'number' && !(m.id in next)) {
+        next[m.id] = now;
+        changed = true;
+      }
+    });
+    if (changed) {
+      setFirstSeen(next);
+      AsyncStorage.setItem(firstSeenKey, JSON.stringify(next));
+    }
+  }, [messages, firstSeen, peerId]);
+
+  useEffect(() => {
+    if (!peerId) return;
+    const now = Date.now();
+    let minRemaining: number | null = null;
+    messages.forEach((m) => {
+      if (m.deletedAt == null || typeof m.id !== 'number') return;
+      const first = firstSeen[m.id];
+      if (first == null) return;
+      const remaining = first + DELETED_PLACEHOLDER_HIDE_MS - now;
+      if (remaining > 0 && (minRemaining === null || remaining < minRemaining)) {
+        minRemaining = remaining;
+      }
+    });
+    if (minRemaining === null) return;
+    const timer = setTimeout(() => setNowTick((t) => t + 1), minRemaining + 50);
+    return () => clearTimeout(timer);
+  }, [messages, firstSeen, nowTick, peerId]);
 
   useEffect(() => {
     if (!peerId) return;
@@ -256,12 +302,6 @@ export default function UserChatScreen({
         if (deletedPeerId !== peerId || !Array.isArray(messageIds)) return;
         const numericIds = messageIds.filter((n: unknown) => typeof n === 'number');
         if (numericIds.length === 0) return;
-        setBothDeletedIds((prev) => {
-          const next = new Set(prev);
-          numericIds.forEach((id: number) => next.add(id));
-          AsyncStorage.setItem(`p2p_deleted_both_${peerId}`, JSON.stringify([...next]));
-          return next;
-        });
         setMessages((prev) =>
           prev.map((m) =>
             typeof m.id === 'number' && numericIds.includes(m.id)
@@ -471,18 +511,12 @@ export default function UserChatScreen({
     try {
       await deleteP2pMessages([messageId], mode);
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === messageId ? { ...m, deletedAt: Date.now(), deletedBy: myId } : m,
-        ),
+        mode === 'self'
+          ? prev.filter((m) => m.id !== messageId)
+          : prev.map((m) =>
+              m.id === messageId ? { ...m, deletedAt: Date.now(), deletedBy: myId } : m,
+            ),
       );
-      if (mode === 'both') {
-        setBothDeletedIds((prev) => {
-          const next = new Set(prev);
-          next.add(messageId);
-          AsyncStorage.setItem(`p2p_deleted_both_${peerId}`, JSON.stringify([...next]));
-          return next;
-        });
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Не удалось удалить сообщение';
       Alert.alert('Ошибка', msg);
@@ -501,17 +535,20 @@ export default function UserChatScreen({
     try {
       await deleteChat(peerId, mode);
       setMessages([]);
-      AsyncStorage.removeItem(`p2p_deleted_both_${peerId}`);
+      AsyncStorage.removeItem(firstSeenKey);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Не удалось очистить чат';
       Alert.alert('Ошибка', msg);
     }
   };
 
-  const isMessageDeleted = (m: P2PMessage): boolean =>
-    m.deletedAt != null &&
-    (m.deletedBy === myId ||
-      (typeof m.id === 'number' && bothDeletedIds.has(m.id)));
+  const isPlaceholderVisible = (m: P2PMessage): boolean => {
+    if (m.deletedAt == null) return false;
+    if (typeof m.id !== 'number') return true;
+    const first = firstSeen[m.id];
+    if (first == null) return true;
+    return Date.now() - first < DELETED_PLACEHOLDER_HIDE_MS;
+  };
 
   const openAttachment = (att: AttachmentMeta) => {
     if (att.type.startsWith('image/')) {
@@ -555,7 +592,10 @@ export default function UserChatScreen({
       item.status === 'sending' ? ' ·' :
       item.status === 'sent' ? ' ✓' :
       ' ✗';
-    if (isMessageDeleted(item)) {
+    if (item.deletedAt != null) {
+      if (!isPlaceholderVisible(item)) {
+        return null;
+      }
       return (
         <View style={[styles.msgRow, isMe ? styles.msgRowMe : styles.msgRowThem]}>
           <View style={[styles.bubble, styles.bubbleDeleted]}>
@@ -810,14 +850,12 @@ export default function UserChatScreen({
             >
               <Text style={styles.deleteMenuBtnText}>Удалить у себя</Text>
             </TouchableOpacity>
-            {deleteTarget && deleteTarget.senderId === myId ? (
-              <TouchableOpacity
-                style={styles.deleteMenuBtn}
-                onPress={() => handleDeleteMessage('both')}
-              >
-                <Text style={styles.deleteMenuBtnText}>Удалить у всех</Text>
-              </TouchableOpacity>
-            ) : null}
+            <TouchableOpacity
+              style={styles.deleteMenuBtn}
+              onPress={() => handleDeleteMessage('both')}
+            >
+              <Text style={styles.deleteMenuBtnText}>Удалить у всех</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.deleteMenuBtn, styles.deleteMenuCancel]}
               onPress={() => setDeleteTarget(null)}

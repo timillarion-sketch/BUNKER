@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Response } from "express";
 import { z } from "zod";
-import { db, usersTable, p2pMessagesTable, p2pDeletionsTable, contactsTable } from "@workspace/db";
-import { eq, or, and, lt, desc, inArray } from "drizzle-orm";
+import { db, usersTable, p2pMessagesTable, p2pDeletionsTable, p2pMessageHidesTable, contactsTable } from "@workspace/db";
+import { eq, or, and, lt, desc, inArray, notExists } from "drizzle-orm";
 import { sendSseToUser } from "../lib/sse-manager";
 import { publish } from "../lib/sse-events";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
@@ -594,34 +594,46 @@ router.delete("/p2p/messages", requireAuth, async (req: AuthenticatedRequest, re
       return;
     }
 
-    if (mode === "both") {
-      const foreign = messages.filter((m) => m.senderId !== myId);
-      if (foreign.length > 0) {
-        res.status(400).json({ error: "Через both можно удалять только свои сообщения" });
-        return;
-      }
+    if (mode === "self") {
+      await db
+        .insert(p2pMessageHidesTable)
+        .values(messages.map((m) => ({ messageId: m.id, userId: myId })))
+        .onConflictDoNothing();
+
+      res.json({ deleted: messages.map((m) => m.id) });
+      return;
     }
 
     const now = new Date();
     const rows = await db
       .update(p2pMessagesTable)
-      .set({ deletedAt: now, deletedBy: myId })
+      .set({ deletedAt: now, deletedBy: myId, content: "", attachments: [] })
       .where(inArray(p2pMessagesTable.id, messages.map((m) => m.id)))
       .returning({ id: p2pMessagesTable.id });
 
     const deletedIds = rows.map((r) => r.id);
 
-    if (mode === "both" && deletedIds.length > 0) {
-      const recipientBunkerIds = [...new Set(messages.map((m) => m.receiverId))];
+    if (deletedIds.length > 0) {
+      const peerBunkerIds = [
+        ...new Set(
+          messages.map((m) => (m.receiverId === myId ? m.senderId : m.receiverId)),
+        ),
+      ];
+
       const recipients = await db
         .select({ id: usersTable.id })
         .from(usersTable)
-        .where(inArray(usersTable.bunkerId, recipientBunkerIds));
+        .where(
+          or(
+            eq(usersTable.id, userId),
+            inArray(usersTable.bunkerId, peerBunkerIds),
+          ),
+        );
 
       for (const recipient of recipients) {
         try {
           await sendSseToUser(String(recipient.id), "p2p_message_deleted", {
-            peerId: myId,
+            peerId: recipient.id === userId ? peerBunkerIds[0] : myId,
             messageIds: deletedIds,
           });
         } catch (sseErr) {
@@ -695,6 +707,17 @@ router.get("/p2p/history/:peerId", requireAuth, async (req: AuthenticatedRequest
           or(
             and(eq(p2pMessagesTable.senderId, myId), eq(p2pMessagesTable.receiverId, peerId)),
             and(eq(p2pMessagesTable.senderId, peerId), eq(p2pMessagesTable.receiverId, myId)),
+          ),
+          notExists(
+            db
+              .select()
+              .from(p2pMessageHidesTable)
+              .where(
+                and(
+                  eq(p2pMessageHidesTable.messageId, p2pMessagesTable.id),
+                  eq(p2pMessageHidesTable.userId, myId),
+                ),
+              ),
           ),
           beforeDate ? lt(p2pMessagesTable.createdAt, beforeDate) : undefined,
         ),
