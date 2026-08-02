@@ -34,6 +34,14 @@ const PALETTE_COLORS = [
   { name: 'Жёлтый', value: '#ffdd00' },
 ];
 
+// Уведомления управляются системными настройками телефона;
+// тумблер в приложении скрыт, но код сохранён — вернуть через true.
+const SHOW_NOTIFICATIONS_TOGGLE = false;
+
+// Нативный модуль запрета скриншотов (FlagSecure) не подключён;
+// тумблер скрыт, но код сохранён — вернуть через true.
+const SHOW_SCREENSHOTS_TOGGLE = false;
+
 type Props = {
   navigation: any;
 };
@@ -56,7 +64,6 @@ export default function ProfileScreen({ navigation }: Props) {
   const statusCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const vpn = VpnService.getInstance();
 
-  const [ghostMode, setGhostMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [screenshots, setScreenshots] = useState(false);
   const [userId, setUserId] = useState('');
@@ -427,49 +434,40 @@ export default function ProfileScreen({ navigation }: Props) {
 
         <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>НАСТРОЙКИ</Text>
         <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-          <View style={styles.toggleRow}>
-            <Text style={[styles.toggleLabel, { color: theme.colors.text }]}>Призрак-режим</Text>
-            <Switch
-              value={ghostMode}
-              onValueChange={async (v) => {
-                setGhostMode(v);
-                try {
-                  await api.patch('/api/auth/me', { ghostMode: v });
-                } catch {}
-              }}
-              trackColor={{ false: theme.colors.border, true: accent }}
-              thumbColor={ghostMode ? '#fff' : theme.colors.textMuted}
-            />
-          </View>
-          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-          <View style={styles.toggleRow}>
-            <Text style={[styles.toggleLabel, { color: theme.colors.text }]}>Уведомления</Text>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: theme.colors.border, true: accent }}
-              thumbColor={notifications ? '#fff' : theme.colors.textMuted}
-            />
-          </View>
-          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-          <View style={styles.toggleRow}>
-            <Text style={[styles.toggleLabel, { color: theme.colors.text }]}>Скриншоты</Text>
-            <Switch
-              value={screenshots}
-              onValueChange={async (v) => {
-                setScreenshots(v);
-                await SecureStore.setItemAsync('screenshot_block', v ? 'true' : 'false');
-                if (Platform.OS === 'android') {
-                  try {
-                    const { NativeModules } = require('react-native');
-                    NativeModules.FlagSecure?.setSecure?.(v);
-                  } catch {}
-                }
-              }}
-              trackColor={{ false: theme.colors.border, true: accent }}
-              thumbColor={screenshots ? '#fff' : theme.colors.textMuted}
-            />
-          </View>
+          {SHOW_NOTIFICATIONS_TOGGLE && (
+            <>
+              <View style={styles.toggleRow}>
+                <Text style={[styles.toggleLabel, { color: theme.colors.text }]}>Уведомления</Text>
+                <Switch
+                  value={notifications}
+                  onValueChange={setNotifications}
+                  trackColor={{ false: theme.colors.border, true: accent }}
+                  thumbColor={notifications ? '#fff' : theme.colors.textMuted}
+                />
+              </View>
+              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+            </>
+          )}
+          {SHOW_SCREENSHOTS_TOGGLE && (
+            <View style={styles.toggleRow}>
+              <Text style={[styles.toggleLabel, { color: theme.colors.text }]}>Скриншоты</Text>
+              <Switch
+                value={screenshots}
+                onValueChange={async (v) => {
+                  setScreenshots(v);
+                  await SecureStore.setItemAsync('screenshot_block', v ? 'true' : 'false');
+                  if (Platform.OS === 'android') {
+                    try {
+                      const { NativeModules } = require('react-native');
+                      NativeModules.FlagSecure?.setSecure?.(v);
+                    } catch {}
+                  }
+                }}
+                trackColor={{ false: theme.colors.border, true: accent }}
+                thumbColor={screenshots ? '#fff' : theme.colors.textMuted}
+              />
+            </View>
+          )}
         </View>
 
         <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>АТМОСФЕРА ФОНА</Text>
