@@ -1,7 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
 import { z } from "zod";
 import { db, contactsTable, usersTable } from "@workspace/db";
-import { AddContactBody } from "@workspace/api-zod";
 import { eq, or, and, inArray } from "drizzle-orm";
 import { broadcastSse } from "../lib/sse-manager";
 import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
@@ -101,6 +100,10 @@ router.post("/contacts", requireAuth, async (req: AuthenticatedRequest, res: Res
   } catch (err) {
     res.status(500).json({ error: "Не удалось создать контакт" });
   }
+});
+
+const AddContactBody = z.object({
+  userId: z.string().min(1),
 });
 
 const updateContactSchema = z.object({

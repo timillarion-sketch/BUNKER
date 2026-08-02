@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 import {
   View, Text, FlatList, TextInput, Image, ImageBackground, ScrollView,
-  TouchableOpacity, StyleSheet, Alert,
+  TouchableOpacity, StyleSheet, Alert, Linking,
   KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,8 @@ import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
 import { useAccent } from '../core/AccentContext';
 import { api } from '@/core';
 import ColorPickerModal from '../components/ColorPickerModal';
+import ImageViewerModal from '../components/ImageViewerModal';
+import { uploadAttachment, type AttachmentMeta } from '../services/uploadAttachment';
 import {
   ensureBnkrId,
   sendP2pMessage,
@@ -28,6 +30,7 @@ interface P2PMessage {
   id: number | string;
   senderId: string;
   text: string;
+  attachments?: AttachmentMeta[];
   createdAt: number;
   status: 'sending' | 'sent' | 'error';
   isOptimistic: boolean;
@@ -73,10 +76,13 @@ export default function UserChatScreen({
   const isIncognito = mode === 'incognito';
 
   const [chatBackgroundColor, setChatBackgroundColor] = useState('#000000');
+  const [chatTextColor, setChatTextColor] = useState('#ffffff');
   const [backgroundType, setBackgroundType] = useState<'color' | 'image'>('color');
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
+  const [colorPickerMode, setColorPickerMode] = useState<'background' | 'text'>('background');
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<{ uri: string; type: string }[]>([]);
   const MAX_ATTACHMENTS = 10;
 
@@ -86,15 +92,17 @@ export default function UserChatScreen({
 
   useEffect(() => {
     // Load chat background preference
-    api.get<{ backgroundType: string; backgroundColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/p2p/${peerId}`)
+    api.get<{ backgroundType: string; backgroundColor: string; textColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/p2p/${peerId}`)
       .then(res => {
         setBackgroundType(res.backgroundType === 'image' ? 'image' : 'color');
         setChatBackgroundColor(res.backgroundColor || '#000000');
+        setChatTextColor(res.textColor || '#ffffff');
         setBackgroundImageUrl(res.backgroundImageUrl ?? null);
       })
       .catch(() => {
         setBackgroundType('color');
         setChatBackgroundColor('#000000');
+        setChatTextColor('#ffffff');
         setBackgroundImageUrl(null);
       });
 
@@ -112,6 +120,7 @@ export default function UserChatScreen({
             id: m.id,
             senderId: m.senderId,
             text: m.content,
+            attachments: m.attachments,
             createdAt: new Date(m.createdAt).getTime(),
             status: m.status === "sent" ? "sent" as const : "sent" as const,
             isOptimistic: false,
@@ -184,6 +193,7 @@ export default function UserChatScreen({
             id: msg.id,
             senderId: msg.senderId,
             text: msg.content,
+            attachments: msg.attachments,
             createdAt: new Date(msg.createdAt).getTime(),
             status: "sent" as const,
             isOptimistic: false,
@@ -212,12 +222,13 @@ export default function UserChatScreen({
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || sendingRef.current || !myId) return;
+    if ((!text && attachedFiles.length === 0) || sendingRef.current || !myId) return;
     sendingRef.current = true;
     setSending(true);
 
+    const optimisticId = `opt_${Date.now()}`;
     const optimistic: P2PMessage = {
-      id: `opt_${Date.now()}`,
+      id: optimisticId,
       senderId: myId,
       text,
       createdAt: Date.now(),
@@ -232,7 +243,12 @@ export default function UserChatScreen({
     const clientMsgId = crypto.randomUUID?.() ?? `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     try {
-      const serverMsg = await sendP2pMessage(peerId, text, clientMsgId);
+      let attachments: AttachmentMeta[] = [];
+      if (attachedFiles.length > 0) {
+        attachments = await Promise.all(attachedFiles.map(file => uploadAttachment(file)));
+      }
+
+      const serverMsg = await sendP2pMessage(peerId, text, clientMsgId, attachments);
 
       if (serverMsg.contactPending) {
         setContactStatus(prev => {
@@ -245,11 +261,12 @@ export default function UserChatScreen({
 
       setMessages(prev =>
         prev.map(m =>
-          m.id === optimistic.id
+          m.id === optimisticId
             ? {
                 id: serverMsg.id,
                 senderId: serverMsg.senderId,
                 text: serverMsg.content,
+                attachments: serverMsg.attachments ?? attachments,
                 createdAt: new Date(serverMsg.createdAt).getTime(),
                 status: 'sent' as const,
                 isOptimistic: false,
@@ -257,21 +274,29 @@ export default function UserChatScreen({
             : m,
         ),
       );
+      setAttachedFiles([]);
     } catch (err: unknown) {
       setMessages(prev =>
         prev.map(m =>
-          m.id === optimistic.id ? { ...m, status: 'error' as const } : m,
+          m.id === optimisticId ? { ...m, status: 'error' as const } : m,
         ),
       );
+      const msg = err instanceof Error ? err.message : 'Не удалось отправить сообщение';
+      Alert.alert('Ошибка', msg);
     } finally {
       sendingRef.current = false;
       setSending(false);
     }
-  }, [input, myId, sendingRef, peerId]);
+  }, [input, myId, sendingRef, peerId, attachedFiles]);
 
-  const saveChatBackground = async (value: string, kind?: 'color' | 'image') => {
+  const saveChatBackground = async (value: string, kind?: 'color' | 'image' | 'text') => {
     try {
-      if (kind === 'image') {
+      if (kind === 'text') {
+        await api.put(`/api/chat-prefs/p2p/${peerId}`, {
+          textColor: value,
+        });
+        setChatTextColor(value);
+      } else if (kind === 'image') {
         await api.put(`/api/chat-prefs/p2p/${peerId}`, {
           backgroundType: 'image',
           backgroundImageUrl: value,
@@ -378,12 +403,50 @@ export default function UserChatScreen({
     }
   };
 
+  const openAttachment = (att: AttachmentMeta) => {
+    if (att.type.startsWith('image/')) {
+      setViewerUri(att.url);
+      return;
+    }
+    Linking.openURL(att.url).catch(() => {
+      Alert.alert('Ошибка', 'Не удалось открыть вложение');
+    });
+  };
+
+  const renderAttachments = (atts: AttachmentMeta[], isMe: boolean) => (
+    <View style={styles.attachmentsInMsg}>
+      {atts.map((att, idx) => {
+        const isImage = att.type.startsWith('image/');
+        return (
+          <TouchableOpacity
+            key={`${att.url}_${idx}`}
+            onPress={() => openAttachment(att)}
+            style={[styles.attachmentChip, isImage ? styles.attachmentChipImage : null]}
+          >
+            {isImage ? (
+              <Image source={{ uri: att.url }} style={styles.attachmentPreview} resizeMode="cover" />
+            ) : (
+              <View style={styles.attachmentFileRow}>
+                <Text style={styles.attachmentFileIcon}>📄</Text>
+                <Text style={[styles.attachmentFileName, isMe ? null : { color: chatTextColor }]} numberOfLines={2}>
+                  {att.name || 'Файл'}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
   const renderMessage = ({ item }: { item: P2PMessage }) => {
     const isMe = item.senderId === myId;
     const statusIcon =
       item.status === 'sending' ? ' ·' :
       item.status === 'sent' ? ' ✓' :
       ' ✗';
+    const hasContent = item.text || (item.attachments && item.attachments.length > 0);
+    if (!hasContent) return null;
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowMe : styles.msgRowThem]}>
         <View style={[
@@ -392,9 +455,14 @@ export default function UserChatScreen({
             ? [styles.bubbleMe, { backgroundColor: accent + '22', borderColor: accent }]
             : styles.bubbleThem
         ]}>
-          <Text style={[styles.msgText, isMe && { color: '#e0e0ff' }]}>
-            {item.text}
-          </Text>
+          {item.text ? (
+            <Text style={[styles.msgText, isMe ? { color: '#e0e0ff' } : { color: chatTextColor }]}>
+              {item.text}
+            </Text>
+          ) : null}
+          {item.attachments && item.attachments.length > 0
+            ? renderAttachments(item.attachments, isMe)
+            : null}
           <Text style={styles.msgMeta}>
             {new Date(item.createdAt).toLocaleTimeString('ru', {
               hour: '2-digit', minute: '2-digit'
@@ -446,10 +514,16 @@ export default function UserChatScreen({
           <Text style={styles.e2eText}>🔒 E2E</Text>
         </View>
         <TouchableOpacity
-          onPress={() => setIsColorPickerVisible(true)}
+          onPress={() => { setColorPickerMode('background'); setIsColorPickerVisible(true); }}
           style={{ marginLeft: 8, padding: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
         >
           <Text style={{ fontSize: 16, color: '#e0e0ff' }}>🎨</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => { setColorPickerMode('text'); setIsColorPickerVisible(true); }}
+          style={{ marginLeft: 8, padding: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
+        >
+          <Text style={{ fontSize: 16, color: '#e0e0ff' }}>А</Text>
         </TouchableOpacity>
       </View>
 
@@ -568,10 +642,10 @@ export default function UserChatScreen({
         />
         <TouchableOpacity
           onPress={sendMessage}
-          disabled={!input.trim() || sendingRef.current}
-          style={[styles.sendBtn, { backgroundColor: input.trim() && !sendingRef.current ? accent : '#1e1e2e' }]}
+          disabled={(!input.trim() && attachedFiles.length === 0) || sendingRef.current}
+          style={[styles.sendBtn, { backgroundColor: (input.trim() || attachedFiles.length > 0) && !sendingRef.current ? accent : '#1e1e2e' }]}
         >
-          <Text style={[styles.sendIcon, { color: input.trim() && !sendingRef.current ? '#000' : '#404060' }]}>
+          <Text style={[styles.sendIcon, { color: (input.trim() || attachedFiles.length > 0) && !sendingRef.current ? '#000' : '#404060' }]}>
             ➤
           </Text>
         </TouchableOpacity>
@@ -579,9 +653,16 @@ export default function UserChatScreen({
 
       <ColorPickerModal
         visible={isColorPickerVisible}
-        initialColor={chatBackgroundColor}
+        initialColor={colorPickerMode === 'text' ? chatTextColor : chatBackgroundColor}
         allowImage
+        mode={colorPickerMode}
+        onModeChange={setColorPickerMode}
         onClose={saveChatBackground}
+      />
+      <ImageViewerModal
+        visible={viewerUri !== null}
+        uri={viewerUri}
+        onClose={() => setViewerUri(null)}
       />
     </KeyboardAvoidingView>
   );
@@ -612,6 +693,20 @@ const styles = StyleSheet.create({
   bubbleThem: { backgroundColor: 'rgba(25,25,27,0.65)', borderColor: 'rgba(255,255,255,0.08)' },
   msgText: { color: '#c0c0e0', fontSize: 15, lineHeight: 21 },
   msgMeta: { color: '#404060', fontSize: 10, marginTop: 4, textAlign: 'right' },
+  attachmentsInMsg: { marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  attachmentChip: {
+    borderRadius: 10, overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  attachmentChipImage: { width: 120, height: 120 },
+  attachmentPreview: { width: 120, height: 120 },
+  attachmentFileRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 10, paddingVertical: 8,
+    maxWidth: 200,
+  },
+  attachmentFileIcon: { fontSize: 20 },
+  attachmentFileName: { color: '#c0c0e0', fontSize: 13, flexShrink: 1 },
   attachmentsRow: { maxHeight: 64, paddingTop: 8 },
   attachmentsContent: { paddingHorizontal: 12, gap: 8, alignItems: 'center' },
   attachThumb: {

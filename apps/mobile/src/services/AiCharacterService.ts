@@ -1,4 +1,5 @@
 import { api } from '@/core';
+import type { AttachmentMeta } from './uploadAttachment';
 
 const TIMEOUT_MS = 95000;
 const CONTEXT_WINDOW = 20;
@@ -14,6 +15,7 @@ export async function sendMessage(
   characterId: string,
   history: AiMessage[],
   userText: string,
+  attachments?: AttachmentMeta[],
 ): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -23,13 +25,24 @@ export async function sendMessage(
 
     const sliced = history.slice(-CONTEXT_WINDOW);
     contextMessages.push(...sliced);
-    contextMessages.push({ role: 'user', content: userText });
+
+    const attachmentLines = (attachments ?? [])
+      .map(a => `[Вложение: ${a.name} (${a.url})]`);
+    const fullText = userText || attachmentLines.join('\n');
+    const llmText = attachmentLines.length > 0
+      ? `${fullText}${fullText ? '\n' : ''}${attachmentLines.join('\n')}`
+      : fullText;
+
+    contextMessages.push({ role: 'user', content: llmText });
 
     const data = await api.request<{ reply: string } | { reply: string }[]>('/api/ai/chat', {
       method: 'POST',
       body: JSON.stringify({
         characterId,
         messages: contextMessages,
+        ...(attachments && attachments.length > 0
+          ? { attachments: attachments.map(({ url, name }) => ({ url, name })) }
+          : {}),
       }),
       signal: controller.signal,
     });

@@ -17,11 +17,25 @@ const registerSchema = z.object({
   bunkerId: bunkerIdSchema,
 });
 
-const sendSchema = z.object({
-  receiverId: bunkerIdSchema,
-  content: z.string().min(1, "Требуется содержимое").max(50000, "Слишком длинное сообщение"),
-  clientMsgId: z.string().optional(),
+const attachmentSchema = z.object({
+  url: z.string().url(),
+  name: z.string().min(1),
+  type: z.string().min(1),
+  size: z.number().int().nonnegative(),
 });
+
+const sendSchema = z
+  .object({
+    receiverId: bunkerIdSchema,
+    content: z.string().max(50000, "Слишком длинное сообщение").optional(),
+    clientMsgId: z.string().optional(),
+    attachments: z.array(attachmentSchema).max(10, "Максимум 10 вложений").optional(),
+  })
+  .refine(
+    (data) =>
+      (data.content?.trim().length ?? 0) > 0 || (data.attachments?.length ?? 0) > 0,
+    { message: "Требуется текст сообщения или вложение", path: ["content"] },
+  );
 
 router.post("/p2p/register-bunker", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = Number(req.userId);
@@ -136,7 +150,12 @@ router.post("/p2p/initiate", requireAuth, async (req: AuthenticatedRequest, res:
 
   try {
     const [user] = await db
-      .select({ bunkerId: usersTable.bunkerId })
+      .select({
+        bunkerId: usersTable.bunkerId,
+        avatarUrl: usersTable.avatarUrl,
+        displayName: usersTable.displayName,
+        username: usersTable.username,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);
@@ -148,7 +167,12 @@ router.post("/p2p/initiate", requireAuth, async (req: AuthenticatedRequest, res:
     }
 
     const [recipient] = await db
-      .select({ id: usersTable.id })
+      .select({
+        id: usersTable.id,
+        avatarUrl: usersTable.avatarUrl,
+        displayName: usersTable.displayName,
+        username: usersTable.username,
+      })
       .from(usersTable)
       .where(eq(usersTable.bunkerId, receiverId))
       .limit(1);
@@ -157,6 +181,11 @@ router.post("/p2p/initiate", requireAuth, async (req: AuthenticatedRequest, res:
       res.status(404).json({ error: "Получатель не найден" });
       return;
     }
+
+    const peerProfile = {
+      peerAvatarUrl: recipient.avatarUrl ?? null,
+      peerDisplayName: recipient.displayName || recipient.username || null,
+    };
 
     const [existingContact] = await db
       .select()
@@ -182,6 +211,7 @@ router.post("/p2p/initiate", requireAuth, async (req: AuthenticatedRequest, res:
         contactId: existingContact.id,
         status: existingContact.status,
         isRequester: existingContact.requesterId === userId,
+        ...peerProfile,
       });
       return;
     }
@@ -196,6 +226,8 @@ router.post("/p2p/initiate", requireAuth, async (req: AuthenticatedRequest, res:
         fromBunkerId: senderId,
         fromUserId: userId,
         contactId: contact.id,
+        fromAvatarUrl: user?.avatarUrl ?? null,
+        fromDisplayName: user?.displayName || user?.username || null,
       });
     } catch (sseErr) {
       logger.error({ err: sseErr, receiverId: recipient.id }, "sendSseToUser for initiate failed");
@@ -205,12 +237,15 @@ router.post("/p2p/initiate", requireAuth, async (req: AuthenticatedRequest, res:
       fromBunkerId: senderId,
       fromUserId: userId,
       contactId: contact.id,
+      fromAvatarUrl: user?.avatarUrl ?? null,
+      fromDisplayName: user?.displayName || user?.username || null,
     });
 
     res.json({
       contactId: contact.id,
       status: contact.status,
       isRequester: true,
+      ...peerProfile,
     });
   } catch (err) {
     logger.error({ err }, "Failed to initiate channel");
@@ -227,7 +262,7 @@ router.post("/p2p/send", requireAuth, async (req: AuthenticatedRequest, res: Res
     return;
   }
 
-  const { receiverId, content, clientMsgId } = parsed.data;
+  const { receiverId, content, clientMsgId, attachments } = parsed.data;
 
   try {
     const [user] = await db
@@ -281,7 +316,12 @@ router.post("/p2p/send", requireAuth, async (req: AuthenticatedRequest, res: Res
         .returning()
     )[0];
 
-    const values: typeof p2pMessagesTable.$inferInsert = { senderId, receiverId, content };
+    const values: typeof p2pMessagesTable.$inferInsert = {
+      senderId,
+      receiverId,
+      content: content ?? "",
+      attachments: attachments ?? [],
+    };
     if (clientMsgId) values.clientMsgId = clientMsgId;
 
     let message: typeof p2pMessagesTable.$inferSelect;
@@ -323,6 +363,7 @@ router.post("/p2p/send", requireAuth, async (req: AuthenticatedRequest, res: Res
         senderId: message.senderId,
         receiverId: message.receiverId,
         content: message.content,
+        attachments: message.attachments,
         status: message.status,
         createdAt: message.createdAt,
       });
@@ -335,6 +376,7 @@ router.post("/p2p/send", requireAuth, async (req: AuthenticatedRequest, res: Res
       senderId: message.senderId,
       receiverId: message.receiverId,
       content: message.content,
+      attachments: message.attachments,
       status: message.status,
       createdAt: message.createdAt,
     });
@@ -527,7 +569,12 @@ router.get("/p2p/history/:peerId", requireAuth, async (req: AuthenticatedRequest
 
   try {
     const [user] = await db
-      .select({ bunkerId: usersTable.bunkerId })
+      .select({
+        bunkerId: usersTable.bunkerId,
+        avatarUrl: usersTable.avatarUrl,
+        displayName: usersTable.displayName,
+        username: usersTable.username,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, userId))
       .limit(1);

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import * as ImagePicker from 'expo-image-picker';
-import { Paths, File } from 'expo-file-system';
+import { Paths, File, UploadType as ExpoUploadType } from 'expo-file-system';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { Image } from 'react-native';
 import { api, API_URL } from '@/core';
@@ -80,24 +80,20 @@ export function useImageUpload(): UseImageUploadReturn {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('image', {
-        uri: uriToUse,
-        name: 'upload.webp',
-        type: file.mimeType || 'image/webp',
-      } as any);
-      formData.append('type', type);
-
       const token = await api.getToken();
-      const res = await fetch(`${API_URL}/api/upload/image`, {
-        method: 'POST',
+      const fileToUpload = new File(uriToUse);
+      const res = await fileToUpload.upload(`${API_URL}/api/upload/image`, {
+        httpMethod: 'POST',
+        uploadType: ExpoUploadType.MULTIPART,
+        fieldName: 'image',
+        mimeType: file.mimeType || 'image/webp',
+        parameters: { type },
         headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
       });
 
-      const data = await res.json();
+      const data = JSON.parse(res.body);
 
-      if (!res.ok) {
+      if (res.status !== 200) {
         const msg = data.error || 'Не удалось загрузить изображение.';
         setError(msg);
         throw new Error(msg);

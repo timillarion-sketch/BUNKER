@@ -36,6 +36,7 @@ router.get("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
     res.json({
       backgroundType: pref?.backgroundType ?? "color",
       backgroundColor: pref?.backgroundColor ?? "#000000",
+      textColor: pref?.textColor ?? "#ffffff",
       backgroundImageUrl: pref?.backgroundImageUrl ?? null,
     });
   } catch (err) {
@@ -51,10 +52,11 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
   const body = (req.body ?? {}) as {
     backgroundType?: string;
     backgroundColor?: string;
+    textColor?: string;
     backgroundImageUrl?: string | null;
   };
 
-  const { backgroundType, backgroundColor, backgroundImageUrl } = body;
+  const { backgroundType, backgroundColor, textColor, backgroundImageUrl } = body;
 
   if (!VALID_CHAT_TYPES.includes(chatType)) {
     res.status(400).json({ error: `Недопустимый chatType: ${chatType}. Допустимые: ${VALID_CHAT_TYPES.join(", ")}` });
@@ -68,6 +70,11 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
 
   if (backgroundColor !== undefined && (typeof backgroundColor !== "string" || !HEX_REGEX.test(backgroundColor))) {
     res.status(400).json({ error: "backgroundColor должен быть HEX в формате #RRGGBB (например, #ff0000)" });
+    return;
+  }
+
+  if (textColor !== undefined && (typeof textColor !== "string" || !HEX_REGEX.test(textColor))) {
+    res.status(400).json({ error: "textColor должен быть HEX в формате #RRGGBB (например, #ffffff)" });
     return;
   }
 
@@ -93,6 +100,7 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
 
       const mergedType = (backgroundType ?? existing?.backgroundType ?? "color") as "color" | "image";
       const mergedColor = backgroundColor ?? existing?.backgroundColor ?? "#000000";
+      const mergedTextColor = textColor ?? existing?.textColor ?? "#ffffff";
       const mergedUrl =
         mergedType === "image" ? (backgroundImageUrl ?? existing?.backgroundImageUrl ?? null) : null;
 
@@ -108,6 +116,7 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
           chatType,
           backgroundType: mergedType,
           backgroundColor: mergedColor,
+          textColor: mergedTextColor,
           backgroundImageUrl: mergedUrl,
         })
         .onConflictDoUpdate({
@@ -119,6 +128,7 @@ router.put("/chat-prefs/:chatType/:chatKey", requireAuth, async (req: Authentica
           set: {
             backgroundType: mergedType,
             backgroundColor: mergedColor,
+            textColor: mergedTextColor,
             backgroundImageUrl: mergedUrl,
             updatedAt: new Date(),
           },

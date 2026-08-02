@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent, ACCENT_PRESETS, AccentKey } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import ColorPickerModal from '../components/ColorPickerModal';
+import ImageViewerModal from '../components/ImageViewerModal';
 import { api, clearTokens, storage } from '../core';
 import { ChatStorageService } from '../services/ChatStorageService';
 import { ensureBnkrId, resetBnkrIdCache } from '../services/p2pService';
@@ -64,6 +65,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const [savingNick, setSavingNick] = useState(false);
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
   const { pickAndUploadImage, isUploading: uploadingAvatar } = useImageUpload();
 
   const pulse = useCallback(() => {
@@ -255,7 +257,7 @@ export default function ProfileScreen({ navigation }: Props) {
         <Text style={[styles.header, { color: accent, textShadowColor: accent }]}>ПРОФИЛЬ</Text>
 
         <View style={[styles.card, { borderColor: accent, backgroundColor: theme.colors.card }]}>
-          <TouchableOpacity onPress={handleAvatarTap} disabled={uploadingAvatar} style={styles.avatarWrap}>
+          <TouchableOpacity onPress={handleAvatarTap} onLongPress={() => avatarUrl && setViewerUri(avatarUrl)} disabled={uploadingAvatar} style={styles.avatarWrap}>
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatar} />
             ) : (
@@ -570,6 +572,12 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <ImageViewerModal
+        visible={viewerUri !== null}
+        uri={viewerUri}
+        onClose={() => setViewerUri(null)}
+      />
     </View>
   );
 }

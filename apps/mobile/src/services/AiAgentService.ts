@@ -16,7 +16,7 @@ export class AiAgent {
     userMessage: string,
     history: { role: 'user' | 'assistant'; content: string }[],
   ): Promise<string> {
-    return sendMessage(this.id, history, userMessage, this.systemPrompt);
+    return sendMessage(this.id, history, userMessage);
   }
 }
 

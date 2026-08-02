@@ -1,0 +1,1 @@
+ALTER TABLE "p2p_messages" ADD COLUMN "attachments" jsonb DEFAULT '[]'::jsonb NOT NULL;

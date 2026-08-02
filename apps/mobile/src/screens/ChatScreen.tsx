@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View, Text, FlatList, TextInput, Image, ImageBackground, ScrollView, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Alert, Animated, Keyboard,
+  ActivityIndicator, Alert, Animated, Keyboard, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,12 +11,15 @@ import { theme } from '../theme';
 import { sendMessage } from '../services/AiCharacterService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import ColorPickerModal from '../components/ColorPickerModal';
+import ImageViewerModal from '../components/ImageViewerModal';
+import { uploadAttachment, type AttachmentMeta } from '../services/uploadAttachment';
 import { api } from '@/core';
 
 interface AiChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  attachments?: AttachmentMeta[];
   createdAt: number;
 }
 
@@ -37,25 +40,30 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chatBackgroundColor, setChatBackgroundColor] = useState('#000000');
+  const [chatTextColor, setChatTextColor] = useState('#ffffff');
   const [backgroundType, setBackgroundType] = useState<'color' | 'image'>('color');
   const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [isColorPickerVisible, setIsColorPickerVisible] = useState(false);
+  const [colorPickerMode, setColorPickerMode] = useState<'background' | 'text'>('background');
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<{ uri: string; type: string }[]>([]);
   const MAX_ATTACHMENTS = 10;
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     // Load chat background preference for AI character
-    api.get<{ backgroundType: string; backgroundColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/ai_character/${characterId}`)
+    api.get<{ backgroundType: string; backgroundColor: string; textColor: string; backgroundImageUrl: string | null }>(`/api/chat-prefs/ai_character/${characterId}`)
       .then(res => {
         setBackgroundType(res.backgroundType === 'image' ? 'image' : 'color');
         setChatBackgroundColor(res.backgroundColor || '#000000');
+        setChatTextColor(res.textColor || '#ffffff');
         setBackgroundImageUrl(res.backgroundImageUrl ?? null);
       })
       .catch(() => {
         setBackgroundType('color');
         setChatBackgroundColor('#000000');
+        setChatTextColor('#ffffff');
         setBackgroundImageUrl(null);
       });
   }, [characterId]);
@@ -72,23 +80,37 @@ export default function ChatScreen({ route, navigation }: Props) {
 
   const handleSend = async () => {
     const text = inputText.trim();
-    if (!text || sendingRef.current) return;
+    if ((!text && attachedFiles.length === 0) || sendingRef.current) return;
     sendingRef.current = true;
     setIsTyping(true);
     setInputText('');
     setError(null);
 
+    let userAttachments: AttachmentMeta[] | undefined;
+    try {
+      if (attachedFiles.length > 0) {
+        userAttachments = await Promise.all(attachedFiles.map(file => uploadAttachment(file)));
+      }
+    } catch (err) {
+      sendingRef.current = false;
+      setIsTyping(false);
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить вложения');
+      return;
+    }
+
     const userMsg: AiChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
       content: text,
+      attachments: userAttachments,
       createdAt: Date.now(),
     };
     setMessages(prev => [...prev, userMsg]);
+    setAttachedFiles([]);
 
     try {
       const history = messages.map(m => ({ role: m.role, content: m.content }));
-      const reply = await sendMessage(characterId, history, text);
+      const reply = await sendMessage(characterId, history, text, userAttachments);
       const assistantMsg: AiChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -119,9 +141,14 @@ export default function ChatScreen({ route, navigation }: Props) {
     );
   };
 
-  const saveChatBackground = async (value: string, kind?: 'color' | 'image') => {
+  const saveChatBackground = async (value: string, kind?: 'color' | 'image' | 'text') => {
     try {
-      if (kind === 'image') {
+      if (kind === 'text') {
+        await api.put(`/api/chat-prefs/ai_character/${characterId}`, {
+          textColor: value,
+        });
+        setChatTextColor(value);
+      } else if (kind === 'image') {
         await api.put(`/api/chat-prefs/ai_character/${characterId}`, {
           backgroundType: 'image',
           backgroundImageUrl: value,
@@ -244,8 +271,20 @@ export default function ChatScreen({ route, navigation }: Props) {
     );
   };
 
+  const openAttachment = (att: AttachmentMeta) => {
+    if (att.type.startsWith('image/')) {
+      setViewerUri(att.url);
+      return;
+    }
+    Linking.openURL(att.url).catch(() => {
+      Alert.alert('Ошибка', 'Не удалось открыть вложение');
+    });
+  };
+
   const renderMessage = ({ item }: { item: AiChatMessage }) => {
     const isUser = item.role === 'user';
+    const hasContent = item.content || (item.attachments && item.attachments.length > 0);
+    if (!hasContent) return null;
     return (
       <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowAssistant]}>
         {!isUser && (
@@ -254,9 +293,36 @@ export default function ChatScreen({ route, navigation }: Props) {
           </View>
         )}
         <View style={[styles.bubble, isUser ? styles.userBubble : styles.assistantBubble]}>
-          <Text style={[styles.msgText, isUser && styles.userMsgText]}>
-            {item.content}
-          </Text>
+          {item.content ? (
+            <Text style={[styles.msgText, isUser ? styles.userMsgText : { color: chatTextColor }]}>
+              {item.content}
+            </Text>
+          ) : null}
+          {item.attachments && item.attachments.length > 0 ? (
+            <View style={styles.attachmentsInMsg}>
+              {item.attachments.map((att, idx) => {
+                const isImage = att.type.startsWith('image/');
+                return (
+                  <TouchableOpacity
+                    key={`${att.url}_${idx}`}
+                    onPress={() => openAttachment(att)}
+                    style={[styles.attachmentChip, isImage ? styles.attachmentChipImage : null]}
+                  >
+                    {isImage ? (
+                      <Image source={{ uri: att.url }} style={styles.attachmentPreview} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.attachmentFileRow}>
+                        <Text style={styles.attachmentFileIcon}>📄</Text>
+                        <Text style={[styles.attachmentFileName, isUser ? null : { color: chatTextColor }]} numberOfLines={2}>
+                          {att.name || 'Файл'}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : null}
         </View>
       </View>
     );
@@ -287,8 +353,17 @@ export default function ChatScreen({ route, navigation }: Props) {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{characterName}</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => setIsColorPickerVisible(true)} style={styles.colorPickerBtn}>
+          <TouchableOpacity
+            onPress={() => { setColorPickerMode('background'); setIsColorPickerVisible(true); }}
+            style={styles.colorPickerBtn}
+          >
             <Text style={styles.colorPickerText}>🎨</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => { setColorPickerMode('text'); setIsColorPickerVisible(true); }}
+            style={styles.colorPickerBtn}
+          >
+            <Text style={styles.colorPickerText}>А</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleClear}>
             <Text style={styles.headerButton}>Очистить</Text>
@@ -354,9 +429,9 @@ export default function ChatScreen({ route, navigation }: Props) {
           onSubmitEditing={handleSend}
         />
         <TouchableOpacity
-          style={[styles.sendBtn, (isTyping || !inputText.trim()) && styles.sendBtnDisabled]}
+          style={[styles.sendBtn, (isTyping || (!inputText.trim() && attachedFiles.length === 0)) && styles.sendBtnDisabled]}
           onPress={handleSend}
-          disabled={isTyping || sendingRef.current || !inputText.trim()}
+          disabled={isTyping || sendingRef.current || (!inputText.trim() && attachedFiles.length === 0)}
         >
           <Text style={styles.sendBtnText}>→</Text>
         </TouchableOpacity>
@@ -364,9 +439,16 @@ export default function ChatScreen({ route, navigation }: Props) {
 
       <ColorPickerModal
         visible={isColorPickerVisible}
-        initialColor={chatBackgroundColor}
+        initialColor={colorPickerMode === 'text' ? chatTextColor : chatBackgroundColor}
         allowImage
+        mode={colorPickerMode}
+        onModeChange={setColorPickerMode}
         onClose={saveChatBackground}
+      />
+      <ImageViewerModal
+        visible={viewerUri !== null}
+        uri={viewerUri}
+        onClose={() => setViewerUri(null)}
       />
     </KeyboardAvoidingView>
   );
@@ -425,6 +507,20 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
   msgText: { color: theme.colors.text, fontSize: 15, lineHeight: 20 },
+  attachmentsInMsg: { marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  attachmentChip: {
+    borderRadius: 10, overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  attachmentChipImage: { width: 120, height: 120 },
+  attachmentPreview: { width: 120, height: 120 },
+  attachmentFileRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 10, paddingVertical: 8,
+    maxWidth: 200,
+  },
+  attachmentFileIcon: { fontSize: 20 },
+  attachmentFileName: { color: theme.colors.text, fontSize: 13, flexShrink: 1 },
   userMsgText: { color: '#fff' },
   typingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   typingDot: {

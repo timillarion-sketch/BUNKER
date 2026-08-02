@@ -1,4 +1,11 @@
-import { pgTable, serial, text, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, index, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+
+export type P2pAttachment = {
+  url: string;
+  name: string;
+  type: string;
+  size: number;
+};
 
 export const p2pMessagesTable = pgTable("p2p_messages", {
   id: serial("id").primaryKey(),
@@ -6,6 +13,9 @@ export const p2pMessagesTable = pgTable("p2p_messages", {
   receiverId: text("receiver_id").notNull(),
   content: text("content").notNull(),
   clientMsgId: text("client_msg_id"),
+  attachments: jsonb("attachments").$type<P2pAttachment[]>().default([]).notNull(),
+  deletedAt: timestamp("deleted_at"),
+  deletedBy: text("deleted_by"),
   status: text("status", { enum: ["sent", "delivered", "read"] }).notNull().default("sent"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [

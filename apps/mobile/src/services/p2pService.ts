@@ -1,11 +1,13 @@
 import { api } from "@/core";
 import { SseConnection } from "./sseClient";
+import type { AttachmentMeta } from "./uploadAttachment";
 
 export interface P2pServerMessage {
   id: number;
   senderId: string;
   receiverId: string;
   content: string;
+  attachments?: AttachmentMeta[];
   status: "sent" | "delivered" | "read";
   createdAt: string;
   contactPending?: boolean;
@@ -45,9 +47,11 @@ export async function sendP2pMessage(
   receiverId: string,
   content: string,
   clientMsgId?: string,
+  attachments?: AttachmentMeta[],
 ): Promise<P2pServerMessage> {
   const body: Record<string, unknown> = { receiverId, content };
   if (clientMsgId) body.clientMsgId = clientMsgId;
+  if (attachments && attachments.length > 0) body.attachments = attachments;
   return api.post<P2pServerMessage>("/api/p2p/send", body);
 }
 
@@ -103,6 +107,8 @@ export async function initiateChannel(receiverId: string): Promise<{
   contactId: number;
   status: string;
   isRequester: boolean;
+  peerAvatarUrl: string | null;
+  peerDisplayName: string | null;
 }> {
   return api.post("/api/p2p/initiate", { receiverId });
 }

@@ -99,6 +99,70 @@ export default function ChatListScreen({ navigation }: Props) {
 
   useEffect(() => { fetchChats(); }, []);
 
+  const syncServerContacts = useCallback(async () => {
+    // Fetch server contacts and merge into local state/cache
+    try {
+      const serverContacts = await fetchServerContacts();
+      if (serverContacts.length === 0) return;
+
+      const localRaw = await AsyncStorage.getItem('p2p_contacts');
+      let localContacts: Contact[] = [];
+      if (localRaw) {
+        const all: Contact[] = JSON.parse(localRaw);
+        localContacts = all.filter(c => isValidBnkrId(c.id));
+        if (localContacts.length !== all.length) {
+          await AsyncStorage.setItem('p2p_contacts', JSON.stringify(localContacts));
+        }
+      }
+
+      const localMap = new Map(localContacts.map(c => [c.id, c]));
+      let changed = false;
+
+      for (const sc of serverContacts) {
+        if (sc.status === 'blocked') continue;
+        const bunkerId = sc.peerBunkerId;
+        if (!bunkerId || !isValidBnkrId(bunkerId)) continue;
+
+        const serverName = sc.peerDisplayName || bunkerId || 'Unknown';
+        const serverAvatarUrl = sc.peerAvatarUrl ?? null;
+
+        const existing = localMap.get(bunkerId);
+        if (existing) {
+          if (
+            existing.contactStatus !== sc.status ||
+            existing.isRequester !== sc.isRequester ||
+            existing.avatarUrl !== serverAvatarUrl ||
+            existing.name !== serverName
+          ) {
+            localMap.set(bunkerId, {
+              ...existing,
+              name: serverName,
+              avatarUrl: serverAvatarUrl,
+              contactStatus: sc.status as 'accepted' | 'pending',
+              isRequester: sc.isRequester,
+              contactDbId: sc.id,
+              channelStatus: sc.status === 'pending'
+                ? (sc.isRequester ? 'outgoing_request' : 'incoming_request')
+                : 'accepted',
+            });
+            changed = true;
+          }
+        } else {
+          localMap.set(bunkerId, createServerContact(sc));
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        const merged = Array.from(localMap.values());
+        await AsyncStorage.setItem('p2p_contacts', JSON.stringify(merged));
+        setContacts(merged);
+      }
+    } catch {
+      // Background sync — fail silently
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       // 1. Load local contacts first — instant UI
@@ -114,48 +178,9 @@ export default function ChatListScreen({ navigation }: Props) {
       }
 
       // 2. Fetch server contacts in background and merge
-      try {
-        const serverContacts = await fetchServerContacts();
-        if (serverContacts.length === 0) return;
-
-        const localMap = new Map(localContacts.map(c => [c.id, c]));
-        let changed = false;
-
-        for (const sc of serverContacts) {
-          if (sc.status === 'blocked') continue;
-          const bunkerId = sc.peerBunkerId;
-          if (!bunkerId || !isValidBnkrId(bunkerId)) continue;
-
-          const existing = localMap.get(bunkerId);
-          if (existing) {
-            if (existing.contactStatus !== sc.status || existing.isRequester !== sc.isRequester) {
-              localMap.set(bunkerId, {
-                ...existing,
-                contactStatus: sc.status as 'accepted' | 'pending',
-                isRequester: sc.isRequester,
-                contactDbId: sc.id,
-                channelStatus: sc.status === 'pending'
-                  ? (sc.isRequester ? 'outgoing_request' : 'incoming_request')
-                  : 'accepted',
-              });
-              changed = true;
-            }
-          } else {
-            localMap.set(bunkerId, createServerContact(sc));
-            changed = true;
-          }
-        }
-
-        if (changed) {
-          const merged = Array.from(localMap.values());
-          await AsyncStorage.setItem('p2p_contacts', JSON.stringify(merged));
-          setContacts(merged);
-        }
-      } catch {
-        // Background sync — fail silently
-      }
+      await syncServerContacts();
     })();
-  }, []);
+  }, [syncServerContacts]);
 
   useEffect(() => {
     connectSse();
@@ -174,8 +199,8 @@ export default function ChatListScreen({ navigation }: Props) {
           const roomId = `dm_pending_${data.fromBunkerId}`;
           saveContact({
             id: data.fromBunkerId,
-            name: data.fromBunkerId,
-            avatarUrl: null,
+            name: data.fromDisplayName || data.fromBunkerId,
+            avatarUrl: data.fromAvatarUrl ?? null,
             emoji: '💬',
             color: '#00F0FF',
             roomId,
@@ -232,7 +257,7 @@ export default function ChatListScreen({ navigation }: Props) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchChats();
+    await Promise.all([fetchChats(), syncServerContacts()]);
     setRefreshing(false);
   };
 
@@ -263,8 +288,8 @@ export default function ChatListScreen({ navigation }: Props) {
       const roomId = `dm_${Date.now()}`;
       const newContact: Contact = {
         id: trimmed,
-        name: contactName.trim() || trimmed,
-        avatarUrl: null,
+        name: contactName.trim() || result.peerDisplayName || trimmed,
+        avatarUrl: result.peerAvatarUrl ?? null,
         emoji: '💬',
         color: '#00F0FF',
         roomId,

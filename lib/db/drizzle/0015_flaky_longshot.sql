@@ -1,0 +1,1 @@
+ALTER TABLE "chat_display_prefs" ADD COLUMN "text_color" text DEFAULT '#ffffff' NOT NULL;
