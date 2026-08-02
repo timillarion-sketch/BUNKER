@@ -1,4 +1,5 @@
-import { Modal, View, TouchableOpacity, Image, StyleSheet, Text } from "react-native";
+import { Modal, View, TouchableOpacity, StyleSheet, Text } from "react-native";
+import { Image } from "expo-image";
 
 interface ImageViewerModalProps {
   visible: boolean;
@@ -23,7 +24,7 @@ export default function ImageViewerModal({ visible, uri, onClose }: ImageViewerM
           <Text style={styles.closeText}>✕</Text>
         </TouchableOpacity>
         {uri ? (
-          <Image source={{ uri }} style={styles.image} resizeMode="contain" />
+          <Image source={{ uri }} style={styles.image} contentFit="contain" cachePolicy="memory-disk" />
         ) : null}
       </TouchableOpacity>
     </Modal>

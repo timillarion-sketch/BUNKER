@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, Alert,
-  Modal, TextInput, ActivityIndicator, Platform, Image,
+  Modal, TextInput, ActivityIndicator, Platform,
   KeyboardAvoidingView, ScrollView,
 } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
@@ -494,7 +495,7 @@ export default function ChatListScreen({ navigation }: Props) {
               style={[styles.contactRow, { borderLeftColor: item.color, borderLeftWidth: 3 }]}
             >
               {item.avatarUrl ? (
-                <Image source={{ uri: item.avatarUrl }} style={styles.contactAvatar} />
+                <Image source={{ uri: item.avatarUrl }} style={styles.contactAvatar} cachePolicy="memory-disk" />
               ) : (
                 <Text style={styles.contactEmoji}>{item.emoji}</Text>
               )}

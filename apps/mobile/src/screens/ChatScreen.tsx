@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import {
-  View, Text, FlatList, TextInput, Image, ImageBackground, ScrollView, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform,
+  View, Text, FlatList, TextInput, Image, ScrollView, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform,
   ActivityIndicator, Alert, Animated, Keyboard, Linking,
 } from 'react-native';
+import { Image as ExpoImage, ImageBackground as ExpoImageBackground } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -309,7 +310,7 @@ export default function ChatScreen({ route, navigation }: Props) {
                     style={[styles.attachmentChip, isImage ? styles.attachmentChipImage : null]}
                   >
                     {isImage ? (
-                      <Image source={{ uri: att.url }} style={styles.attachmentPreview} resizeMode="cover" />
+                      <ExpoImage source={{ uri: att.url }} style={styles.attachmentPreview} contentFit="cover" cachePolicy="memory-disk" />
                     ) : (
                       <View style={styles.attachmentFileRow}>
                         <Text style={styles.attachmentFileIcon}>📄</Text>
@@ -342,10 +343,11 @@ export default function ChatScreen({ route, navigation }: Props) {
     >
       {showImage && (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <ImageBackground
+          <ExpoImageBackground
             source={bgImageSource}
             style={StyleSheet.absoluteFill}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
             onError={() => setImageLoadFailed(true)}
           />
         </View>

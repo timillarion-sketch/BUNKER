@@ -2,10 +2,11 @@ import React, {
   useState, useEffect, useRef, useCallback, useMemo
 } from 'react';
 import {
-  View, Text, FlatList, TextInput, Image, ImageBackground, ScrollView,
+  View, Text, FlatList, TextInput, Image, ScrollView,
   TouchableOpacity, StyleSheet, Alert, Linking, Modal,
   KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
+import { Image as ExpoImage, ImageBackground as ExpoImageBackground } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -159,7 +160,7 @@ export default function UserChatScreen({
       headerTitle: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {peerAvatarUrl ? (
-            <Image source={{ uri: peerAvatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+            <ExpoImage source={{ uri: peerAvatarUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} cachePolicy="memory-disk" />
           ) : (
             <View style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: accent, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: accent, fontSize: 14, fontWeight: '700' }}>
@@ -525,7 +526,7 @@ export default function UserChatScreen({
             style={[styles.attachmentChip, isImage ? styles.attachmentChipImage : null]}
           >
             {isImage ? (
-              <Image source={{ uri: att.url }} style={styles.attachmentPreview} resizeMode="cover" />
+              <ExpoImage source={{ uri: att.url }} style={styles.attachmentPreview} contentFit="cover" cachePolicy="memory-disk" />
             ) : (
               <View style={styles.attachmentFileRow}>
                 <Text style={styles.attachmentFileIcon}>📄</Text>
@@ -602,10 +603,11 @@ export default function UserChatScreen({
     >
       {showImage && (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <ImageBackground
+          <ExpoImageBackground
             source={bgImageSource}
             style={StyleSheet.absoluteFill}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
             onError={() => setImageLoadFailed(true)}
           />
         </View>

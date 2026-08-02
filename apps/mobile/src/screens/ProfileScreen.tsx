@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, ScrollView, Switch, LayoutAnimation, Platform, UIManager, Modal, Image,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, ScrollView, Switch, LayoutAnimation, Platform, UIManager, Modal,
 } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -259,7 +260,7 @@ export default function ProfileScreen({ navigation }: Props) {
         <View style={[styles.card, { borderColor: accent, backgroundColor: theme.colors.card }]}>
           <TouchableOpacity onPress={handleAvatarTap} onLongPress={() => avatarUrl && setViewerUri(avatarUrl)} disabled={uploadingAvatar} style={styles.avatarWrap}>
             {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} cachePolicy="memory-disk" />
             ) : (
               <View style={[styles.avatarPlaceholder, { borderColor: accent }]}>
                 <Text style={[styles.avatarInitial, { color: accent }]}>
