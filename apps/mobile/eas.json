@@ -12,7 +12,7 @@
       },
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://176.12.72.246.nip.io",
+        "EXPO_PUBLIC_API_URL": "https://62.109.8.183.nip.io",
         "GRADLE_OPTS": "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain"
       }
     },
@@ -23,18 +23,18 @@
       },
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://176.12.72.246.nip.io",
+        "EXPO_PUBLIC_API_URL": "https://62.109.8.183.nip.io",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       },
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://176.12.72.246.nip.io",
+        "EXPO_PUBLIC_API_URL": "https://62.109.8.183.nip.io",
         "EXPO_PUBLIC_N8N_WEBHOOK_URL": "https://timki.app.n8n.cloud/webhook/BunkerV2.4",
         "EXPO_PUBLIC_N8N_CHAT_WEBHOOK_URL": "https://timki.app.n8n.cloud/webhook/BunkerV2.4",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"

@@ -24,8 +24,8 @@ export default function PromptsModal({ visible, onClose }: Props) {
   const [selectedPrompt, setSelectedPrompt] = useState<PromptTemplate | null>(null);
   const [currentUsername, setCurrentUsername] = useState('');
   const [editingPrompt, setEditingPrompt] = useState<PromptTemplate | 'create' | null>(null);
-  const [editForm, setEditForm] = useState({ title: '', prompt: '', description: '', icon: '', category: '' });
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', prompt: '', description: '', icon: '', category: '', compatibility: '', emojiTags: '', searchKeywords: '' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isAdmin = currentUsername.toLowerCase() === 'timgood';
 
@@ -42,9 +42,16 @@ export default function PromptsModal({ visible, onClose }: Props) {
     (t) => t.label === activeTab,
   )?.filter ?? null;
 
-  const filtered = activeFilter
-    ? templates.filter((t) => t.category === activeFilter)
-    : templates;
+  const searchQueryLower = searchQuery.trim().toLowerCase();
+
+  const filtered = templates.filter((t) => {
+    if (activeFilter && t.category !== activeFilter) return false;
+    if (!searchQueryLower) return true;
+    const haystack = [t.title, t.description, t.searchKeywords ?? '']
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(searchQueryLower);
+  });
 
   const categoryColors: Record<string, string> = {
     VIDEO: '#00F0FF',
@@ -86,12 +93,15 @@ export default function PromptsModal({ visible, onClose }: Props) {
       description: t.description,
       icon: t.icon,
       category: t.category,
+      compatibility: t.compatibility ?? '',
+      emojiTags: t.emojiTags ?? '',
+      searchKeywords: t.searchKeywords ?? '',
     });
     setEditingPrompt(t);
   };
 
   const openCreate = () => {
-    setEditForm({ title: '', prompt: '', description: '', icon: '📝', category: 'VIDEO' });
+    setEditForm({ title: '', prompt: '', description: '', icon: '📝', category: 'VIDEO', compatibility: '', emojiTags: '', searchKeywords: '' });
     setEditingPrompt('create');
   };
 
@@ -163,6 +173,18 @@ export default function PromptsModal({ visible, onClose }: Props) {
             </View>
           </View>
 
+          {/* Search */}
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            placeholder="Поиск по названию, описанию, ключевым словам..."
+            placeholderTextColor="#404060"
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+          />
+
           {/* Category tabs */}
           <ScrollView
             horizontal
@@ -195,7 +217,9 @@ export default function PromptsModal({ visible, onClose }: Props) {
             keyExtractor={item => item.id}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              <Text style={styles.emptyText}>Нет шаблонов в этой категории</Text>
+              <Text style={styles.emptyText}>
+                {searchQuery.trim() ? 'Ничего не найдено' : 'Нет шаблонов в этой категории'}
+              </Text>
             }
             renderItem={({ item }) => (
               <View style={styles.promptCard}>
@@ -212,10 +236,19 @@ export default function PromptsModal({ visible, onClose }: Props) {
                     </View>
                   </View>
                 </View>
+                {item.compatibility ? (
+                  <Text style={styles.cardMeta} numberOfLines={1} ellipsizeMode="tail">
+                    {item.compatibility}
+                  </Text>
+                ) : null}
+                {item.emojiTags ? (
+                  <Text style={styles.cardMeta} numberOfLines={1} ellipsizeMode="tail">
+                    {item.emojiTags}
+                  </Text>
+                ) : null}
                 <Text
                   style={styles.cardDesc}
-                  numberOfLines={expandedId === item.id ? 0 : 2}
-                  onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                  numberOfLines={2}
                   onLongPress={() => {
                     Clipboard.setStringAsync(item.prompt);
                     Alert.alert('✅ Скопировано', 'Текст промпта в буфере');
@@ -301,7 +334,13 @@ export default function PromptsModal({ visible, onClose }: Props) {
                 </Text>
               </View>
 
-              <ScrollView style={{ maxHeight: 300 }}>
+              <ScrollView style={styles.detailScroll}>
+                {selectedPrompt.compatibility ? (
+                  <Text style={styles.detailMeta}>{selectedPrompt.compatibility}</Text>
+                ) : null}
+                {selectedPrompt.emojiTags ? (
+                  <Text style={styles.detailMeta}>{selectedPrompt.emojiTags}</Text>
+                ) : null}
                 {selectedPrompt.description ? (
                   <Text style={{ color: '#8080a0', fontSize: 13, lineHeight: 18, marginBottom: 12 }}>
                     {selectedPrompt.description}
@@ -406,6 +445,33 @@ export default function PromptsModal({ visible, onClose }: Props) {
                 onChangeText={v => setEditForm(p => ({ ...p, description: v }))}
                 style={styles.input}
                 placeholder="Короткое описание"
+                placeholderTextColor="#404060"
+              />
+
+              <Text style={styles.label}>Совместимость</Text>
+              <TextInput
+                value={editForm.compatibility}
+                onChangeText={v => setEditForm(p => ({ ...p, compatibility: v }))}
+                style={styles.input}
+                placeholder="Например: Midjourney • FLUX • GPT Image"
+                placeholderTextColor="#404060"
+              />
+
+              <Text style={styles.label}>Эмодзи-теги</Text>
+              <TextInput
+                value={editForm.emojiTags}
+                onChangeText={v => setEditForm(p => ({ ...p, emojiTags: v }))}
+                style={styles.input}
+                placeholder="Например: ✨ Фотореализм • 🎬 Кино"
+                placeholderTextColor="#404060"
+              />
+
+              <Text style={styles.label}>Ключевые слова для поиска</Text>
+              <TextInput
+                value={editForm.searchKeywords}
+                onChangeText={v => setEditForm(p => ({ ...p, searchKeywords: v }))}
+                style={styles.input}
+                placeholder="Ключевые слова через запятую, RU и EN"
                 placeholderTextColor="#404060"
               />
 
@@ -556,6 +622,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
     marginBottom: 4,
+  },
+  cardMeta: {
+    color: '#606080',
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  detailMeta: {
+    color: '#8080a0',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  detailScroll: {
+    flexShrink: 1,
+  },
+  searchInput: {
+    backgroundColor: 'rgba(10,10,15,0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#e0e0ff',
+    fontSize: 14,
+    marginBottom: 12,
   },
   categoryBadge: {
     alignSelf: 'flex-start',

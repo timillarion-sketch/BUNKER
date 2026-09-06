@@ -28,7 +28,7 @@
         "FOREGROUND_SERVICE_CONNECTED_CAMERA",
         "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
-      "usesCleartextTraffic": true,
+      "usesCleartextTraffic": false,
       "softwareKeyboardLayoutMode": "adjustResize",
       "predictiveBackGestureEnabled": false,
       "networkSecurityConfig": "./network-security-config.xml"
@@ -51,7 +51,7 @@
         {
           "android": {
             "compileSdkVersion": 36,
-            "targetSdkVersion": 34,
+            "targetSdkVersion": 35,
             "minSdkVersion": 24,
             "enableMinifyInReleaseBuilds": true
           }
@@ -65,9 +65,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "9eaabc56-449f-42a1-83fc-548f5aa09bdf"
+        "projectId": "7461eb80-ca0d-4f3a-bc42-074216be0f43"
       }
     },
-    "owner": "timikis-team"
+    "owner": "timkillrr"
   }
 }

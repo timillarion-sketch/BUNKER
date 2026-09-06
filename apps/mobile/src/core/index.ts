@@ -4,9 +4,9 @@ import { CryptoService } from "./crypto";
 
 function getBaseUrl(): string {
   try {
-    return (import.meta as unknown as Record<string, Record<string, string>>).env?.EXPO_PUBLIC_API_URL ?? "https://176.12.72.246.nip.io";
+    return (import.meta as unknown as Record<string, Record<string, string>>).env?.EXPO_PUBLIC_API_URL ?? "https://62.109.8.183.nip.io";
   } catch {
-    return "https://176.12.72.246.nip.io";
+    return "https://62.109.8.183.nip.io";
   }
 }
 

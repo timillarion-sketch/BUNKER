@@ -16,10 +16,14 @@ interface FormState {
   description: string;
   icon: string;
   prompt: string;
+  compatibility: string;
+  emojiTags: string;
+  searchKeywords: string;
 }
 
 const EMPTY_FORM: FormState = {
   title: '', category: 'VIDEO', description: '', icon: '📝', prompt: '',
+  compatibility: '', emojiTags: '', searchKeywords: '',
 };
 
 export default function AdminTemplatesScreen({ navigation }: any) {
@@ -64,6 +68,9 @@ export default function AdminTemplatesScreen({ navigation }: any) {
       description: t.description,
       icon: t.icon,
       prompt: t.prompt,
+      compatibility: t.compatibility ?? '',
+      emojiTags: t.emojiTags ?? '',
+      searchKeywords: t.searchKeywords ?? '',
     });
     setNewCategory('');
     setModalVisible(true);
@@ -242,6 +249,33 @@ export default function AdminTemplatesScreen({ navigation }: any) {
               onChangeText={v => setForm(p => ({ ...p, description: v }))}
               style={styles.input}
               placeholder="Короткое описание карточки"
+              placeholderTextColor="#404060"
+            />
+
+            <Text style={styles.label}>Совместимость</Text>
+            <TextInput
+              value={form.compatibility}
+              onChangeText={v => setForm(p => ({ ...p, compatibility: v }))}
+              style={styles.input}
+              placeholder="Например: Midjourney • FLUX • GPT Image"
+              placeholderTextColor="#404060"
+            />
+
+            <Text style={styles.label}>Эмодзи-теги</Text>
+            <TextInput
+              value={form.emojiTags}
+              onChangeText={v => setForm(p => ({ ...p, emojiTags: v }))}
+              style={styles.input}
+              placeholder="Например: ✨ Фотореализм • 🎬 Кино"
+              placeholderTextColor="#404060"
+            />
+
+            <Text style={styles.label}>Ключевые слова для поиска</Text>
+            <TextInput
+              value={form.searchKeywords}
+              onChangeText={v => setForm(p => ({ ...p, searchKeywords: v }))}
+              style={styles.input}
+              placeholder="Ключевые слова через запятую, RU и EN"
               placeholderTextColor="#404060"
             />
 

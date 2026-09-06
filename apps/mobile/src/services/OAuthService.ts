@@ -6,7 +6,7 @@ import { api } from '../core';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const BACKEND_URL = 'http://176.12.72.246.nip.io';
+const BACKEND_URL = 'https://62.109.8.183.nip.io';
 
 export type OAuthProvider = 'vk' | 'yandex';
 
@@ -54,4 +54,39 @@ export async function startOAuthFlow(
   );
 
   return tokens;
+}
+
+export interface TelegramAuthResult {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export async function startTelegramLogin(): Promise<TelegramAuthResult> {
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'bunker',
+    path: 'auth/success',
+  });
+
+  const authUrl =
+    `${BACKEND_URL}/auth/telegram/login` +
+    `?redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+  const result = await WebBrowser.openAuthSessionAsync(
+    authUrl,
+    redirectUri
+  );
+
+  if (result.type !== 'success') {
+    throw new Error(`Telegram login cancelled or failed: ${result.type}`);
+  }
+
+  const url = new URL(result.url);
+  const accessToken = url.searchParams.get('accessToken');
+  const refreshToken = url.searchParams.get('refreshToken');
+
+  if (!accessToken || !refreshToken) {
+    throw new Error('No tokens in Telegram redirect');
+  }
+
+  return { accessToken, refreshToken };
 }

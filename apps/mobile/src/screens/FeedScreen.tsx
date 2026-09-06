@@ -167,6 +167,15 @@ export default function FeedScreen() {
             <Text style={styles.contentBadge}>{contentItems.length}</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          style={[styles.promptsBtn, { marginLeft: 8 }]}
+          onPress={() => setShowContent(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.promptsIcon}>📦</Text>
+          <Text style={styles.promptsLabel}>Контент</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -277,7 +286,10 @@ function ContentModal({
           </View>
 
           {contentItems.length === 0 ? (
-            <Text style={contentModalStyles.empty}>Нет контента</Text>
+            <View style={contentModalStyles.emptyWrap}>
+              <Text style={contentModalStyles.emptyIcon}>🚀</Text>
+              <Text style={contentModalStyles.empty}>Контент скоро появится. Ожидайте!</Text>
+            </View>
           ) : (
             <ScrollView style={contentModalStyles.scroll}>
               {contentItems.map((item, idx) => (
@@ -349,6 +361,14 @@ const contentModalStyles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginTop: 40,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyIcon: {
+    fontSize: 44,
+    marginBottom: 16,
   },
   scroll: {
     maxHeight: 400,

@@ -26,6 +26,10 @@ export function requireAuth(
     token = authHeader.slice(7);
   }
 
+  if (!token && req.query?.access_token) {
+    token = req.query.access_token as string;
+  }
+
   if (!token) {
     throw new AppError(401, "Требуется авторизация");
   }
@@ -51,6 +55,10 @@ export function optionalAuth(
 
   if (authHeader?.startsWith("Bearer ")) {
     token = authHeader.slice(7);
+  }
+
+  if (!token && req.query?.access_token) {
+    token = req.query.access_token as string;
   }
 
   if (token) {

@@ -7,6 +7,9 @@ export interface PromptTemplate {
   description: string;
   icon: string;
   prompt: string;
+  compatibility?: string;
+  emojiTags?: string;
+  searchKeywords?: string;
 }
 
 export const TAB_CATEGORIES = [
@@ -25,6 +28,9 @@ const STATIC_FALLBACKS: PromptTemplate[] = [
     description: 'Сценарий 60-секундного Reels с хуком и призывом к действию',
     icon: '🎬',
     prompt: 'Напиши сценарий для вирусного Reels/TikTok на тему [ТВОЯ ТЕМА]. Длительность: до 60 секунд. Структура:\n1. Сильный хук (первые 3 секунды).\n2. 3 быстрых совета без воды.\n3. Смена динамики каждые 5 секунд.\n4. Четкий CTA в конце.',
+    compatibility: 'Sora • Veo 2 • Runway Gen-3 • Kling AI',
+    emojiTags: '🎬 Reels • 📱 TikTok • 🔥 Вирусность',
+    searchKeywords: 'reels, tiktok, сценарий, script, вирусный, viral, видео, video, shorts, клип',
   },
   {
     id: 'fallback_photo',
@@ -33,6 +39,9 @@ const STATIC_FALLBACKS: PromptTemplate[] = [
     description: 'Кинематографичный снимок с освещением Rembrandt',
     icon: '📷',
     prompt: 'Cinematic full-body shot, golden hour, Rembrandt lighting, 35mm lens, f/1.8, photorealistic, 8k, cyber-noir aesthetic.',
+    compatibility: 'Midjourney • FLUX • GPT Image • DALL-E 3',
+    emojiTags: '✨ Кинематограф • 📷 Фотореализм • 🌅 Golden Hour',
+    searchKeywords: 'midjourney, flux, фото, photo, кино, cinematic, портрет, portrait, rembrandt, освещение, lighting',
   },
   {
     id: 'fallback_business',
@@ -41,6 +50,9 @@ const STATIC_FALLBACKS: PromptTemplate[] = [
     description: '30-дневный план публикаций для Instagram и TikTok',
     icon: '📊',
     prompt: 'Составь контент-план на 30 дней для ниши [ТВОЯ НИША]. Пропорция: 50% полезный, 30% вовлекающий, 20% продающий.',
+    compatibility: 'ChatGPT • Claude • Notion',
+    emojiTags: '📊 Контент-план • 🗓️ Календарь • 📈 Стратегия',
+    searchKeywords: 'контент, план, content, plan, instagram, стратегия, strategy, публикации, posting, календарь',
   },
   {
     id: 'fallback_social',
@@ -49,6 +61,9 @@ const STATIC_FALLBACKS: PromptTemplate[] = [
     description: 'Цепляющая биография с ключевыми словами и CTA',
     icon: '📱',
     prompt: 'Создай 5 вариантов продающего описания профиля (BIO) для Instagram/Telegram на тему [ТВОЙ БЛОГ/БИЗНЕС]. До 150 символов.',
+    compatibility: 'ChatGPT • Claude • Gemini',
+    emojiTags: '📱 BIO • ✍️ Копирайтинг • 🎯 CTA',
+    searchKeywords: 'bio, биография, instagram, telegram, описание, description, копирайтинг, copywriting, профиль, profile, cta',
   },
 ];
 

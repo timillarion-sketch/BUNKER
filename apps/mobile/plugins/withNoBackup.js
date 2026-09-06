@@ -13,7 +13,6 @@ const NETWORK_SECURITY_CONFIG = `<?xml version="1.0" encoding="utf-8"?>
         </trust-anchors>
     </base-config>
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">176.12.72.246</domain>
         <domain includeSubdomains="true">localhost</domain>
     </domain-config>
 </network-security-config>

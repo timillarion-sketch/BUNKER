@@ -12,7 +12,7 @@ import LobbyScreen from '../screens/LobbyScreen';
 import BrowserScreen from '../screens/BrowserScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatScreen from '../screens/ChatScreen';
-import FeedScreen from '../screens/FeedScreen';
+import PromoIdeasScreen from '../screens/PromoIdeasScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import UserChatScreen from '../screens/UserChatScreen';
 import SecretArchiveScreen from '../screens/SecretArchiveScreen';
@@ -113,7 +113,7 @@ function MainTabs() {
           },
         })}
       />
-      <Tab.Screen name="Контент" component={FeedScreen} />
+      <Tab.Screen name="Промо" component={PromoIdeasScreen} />
       <Tab.Screen name="Профиль" component={ProfileScreen} />
     </Tab.Navigator>
   );

@@ -5,6 +5,8 @@ import { requireAuth, type AuthenticatedRequest } from "../lib/auth";
 
 const router: IRouter = Router();
 
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'timgood';
+
 // GET /api/templates — list all (public, no auth needed)
 router.get("/templates", async (_req, res: Response) => {
   try {
@@ -43,16 +45,19 @@ router.post("/templates", requireAuth, async (req: AuthenticatedRequest, res: Re
       .where(eq(usersTable.id, userId))
       .limit(1);
 
-    if (!user || user.username?.toLowerCase() !== 'timgood') {
+    if (!user || user.username?.toLowerCase() !== ADMIN_USERNAME) {
       return res.status(403).json({ error: "Доступ запрещён" });
     }
 
-    const { title, category, description, icon, prompt } = req.body as {
+    const { title, category, description, icon, prompt, compatibility, emojiTags, searchKeywords } = req.body as {
       title: string;
       category: string;
       description: string;
       icon: string;
       prompt: string;
+      compatibility?: string;
+      emojiTags?: string;
+      searchKeywords?: string;
     };
 
     if (!title || !category || !prompt) {
@@ -61,7 +66,16 @@ router.post("/templates", requireAuth, async (req: AuthenticatedRequest, res: Re
 
     const [inserted] = await db
       .insert(promptsTable)
-      .values({ title, category, description: description || "", icon: icon || "📝", prompt })
+      .values({
+        title,
+        category,
+        description: description || "",
+        icon: icon || "📝",
+        prompt,
+        compatibility: compatibility ?? "",
+        emojiTags: emojiTags ?? "",
+        searchKeywords: searchKeywords ?? "",
+      })
       .returning();
 
     return res.status(201).json(inserted);
@@ -81,17 +95,20 @@ router.put("/templates/:id", requireAuth, async (req: AuthenticatedRequest, res:
       .where(eq(usersTable.id, userId))
       .limit(1);
 
-    if (!user || user.username?.toLowerCase() !== 'timgood') {
+    if (!user || user.username?.toLowerCase() !== ADMIN_USERNAME) {
       return res.status(403).json({ error: "Доступ запрещён" });
     }
 
     const id = Number(req.params.id);
-    const { title, category, description, icon, prompt } = req.body as {
+    const { title, category, description, icon, prompt, compatibility, emojiTags, searchKeywords } = req.body as {
       title?: string;
       category?: string;
       description?: string;
       icon?: string;
       prompt?: string;
+      compatibility?: string;
+      emojiTags?: string;
+      searchKeywords?: string;
     };
 
     const [updated] = await db
@@ -102,6 +119,9 @@ router.put("/templates/:id", requireAuth, async (req: AuthenticatedRequest, res:
         ...(description !== undefined && { description }),
         ...(icon !== undefined && { icon }),
         ...(prompt !== undefined && { prompt }),
+        ...(compatibility !== undefined && { compatibility }),
+        ...(emojiTags !== undefined && { emojiTags }),
+        ...(searchKeywords !== undefined && { searchKeywords }),
         updatedAt: new Date(),
       })
       .where(eq(promptsTable.id, id))
@@ -128,7 +148,7 @@ router.delete("/templates/:id", requireAuth, async (req: AuthenticatedRequest, r
       .where(eq(usersTable.id, userId))
       .limit(1);
 
-    if (!user || user.username?.toLowerCase() !== 'timgood') {
+    if (!user || user.username?.toLowerCase() !== ADMIN_USERNAME) {
       return res.status(403).json({ error: "Доступ запрещён" });
     }
 

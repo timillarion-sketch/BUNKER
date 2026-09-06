@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Linking,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert,
 } from 'react-native';
 import { theme } from '../theme';
 import { api, storage, ApiError } from '../core';
 import { clearSession } from '../core/session';
 import { useAuth } from '../core/AuthProvider';
-import { startOAuthFlow } from '../services/OAuthService';
+import { startOAuthFlow, startTelegramLogin } from '../services/OAuthService';
 
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -85,7 +85,23 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   const handleTelegramLogin = async () => {
-    await Linking.openURL('https://t.me/BunkerUserbot');
+    try {
+      await clearSession();
+
+      const result = await startTelegramLogin();
+      await api.setToken(result.accessToken);
+      await api.setRefreshToken(result.refreshToken);
+      try {
+        const payload = JSON.parse(atob(result.accessToken.split('.')[1]));
+        if (payload.username) {
+          await storage.set('current_username', payload.username);
+        }
+      } catch {}
+      signIn();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Ошибка авторизации';
+      Alert.alert('Ошибка', msg);
+    }
   };
 
   return (

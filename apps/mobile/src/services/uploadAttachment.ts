@@ -18,7 +18,7 @@ export async function uploadAttachment(
     uploadType: ExpoUploadType.MULTIPART,
     fieldName: 'attachment',
     mimeType: file.type,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 
   const data = JSON.parse(res.body);

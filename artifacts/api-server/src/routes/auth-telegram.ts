@@ -7,12 +7,19 @@ import { issueTokensJson, oauthFindOrCreateUser } from "./auth-utils";
 
 const router: IRouter = Router();
 
+const ALLOWED_REDIRECT_REGEX = /^bunker:\/\//;
+
+function safeRedirectUri(candidate: string | undefined): string | undefined {
+  if (!candidate) return undefined;
+  return ALLOWED_REDIRECT_REGEX.test(candidate) ? candidate : undefined;
+}
+
 // GET /auth/telegram/login — HTML страница с Telegram Login Widget
 router.get("/auth/telegram/login", (req: Request, res: Response) => {
   const env = getEnv();
   const botUsername = env.TELEGRAM_BOT_USERNAME;
   const redirectUri = encodeURIComponent(
-    (req.query.redirect_uri as string) || `${env.API_URL}/auth/telegram/callback`,
+    safeRedirectUri(req.query.redirect_uri as string) || `${env.API_URL}/auth/telegram/callback`,
   );
 
   const html = `<!DOCTYPE html>
@@ -76,7 +83,7 @@ router.get("/auth/telegram/callback", async (req: Request, res: Response) => {
       hash: (req.query.hash as string) || "",
     };
 
-    const redirectUri = (req.query.redirect_uri as string) || undefined;
+    const redirectUri = safeRedirectUri(req.query.redirect_uri as string);
 
     if (!authData.id || !authData.hash) {
       return renderError(res, "Неверные данные авторизации");

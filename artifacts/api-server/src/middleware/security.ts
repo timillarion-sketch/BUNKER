@@ -11,8 +11,8 @@ export const securityMiddleware: RequestHandler[] = [
         imgSrc: ["'self'", 'data:', 'https:'],
         connectSrc: [
           "'self'",
-          'https://176.12.72.246.nip.io',
-          'wss://176.12.72.246',
+          'https://62.109.8.183.nip.io',
+          'wss://62.109.8.183',
         ],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
