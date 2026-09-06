@@ -167,7 +167,7 @@ export default function ProfileScreen({ navigation }: Props) {
       if (configUri.startsWith('vless://') || configUri.startsWith('vmess://') || configUri.startsWith('ss://')) {
         configJson = parseProxyUri(configUri);
       }
-      await vpn.connect({ name: 'Бункер VPN', configJson });
+      await vpn.connect({ name: 'Bunker VPN', configJson });
       setVpnStatus('connected');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Ошибка подключения';
@@ -182,7 +182,7 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   const handleSaveConfig = async () => {
-    await SecureStore.setItemAsync('vpn_config', JSON.stringify({ name: 'Бункер VPN', configJson: configUri }));
+    await SecureStore.setItemAsync('vpn_config', JSON.stringify({ name: 'Bunker VPN', configJson: configUri }));
     Alert.alert('Сохранено', 'Ключ безопасного шлюза сохранён');
   };
 
@@ -532,7 +532,7 @@ export default function ProfileScreen({ navigation }: Props) {
         )}
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Бункер v2.4 © 2026  |  О проекте  |  Конфиденциальность</Text>
+          <Text style={styles.footerText}>Bunker v2.4 © 2026  |  О проекте  |  Конфиденциальность</Text>
         </View>
 
       </ScrollView>
