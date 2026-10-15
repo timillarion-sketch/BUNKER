@@ -32,8 +32,6 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.85.3",
-    "react-native-nitro-modules": "^0.35.9",
-    "react-native-nitro-xray-core": "^1.0.2",
     "react-native-quick-base64": "^3.0.0",
     "react-native-quick-crypto": "^1.1.5",
     "react-native-safe-area-context": "^5.7.0",

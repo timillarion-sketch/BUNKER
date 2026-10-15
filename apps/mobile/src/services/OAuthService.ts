@@ -6,7 +6,7 @@ import { api } from '../core';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const BACKEND_URL = 'https://62.109.8.183.nip.io';
+const BACKEND_URL = 'https://taskkiller.duckdns.org';
 
 export type OAuthProvider = 'vk' | 'yandex';
 

@@ -8,7 +8,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "android": {
-      "package": "com.bunker.app",
+      "package": "app.bunker.ru",
       "versionCode": 1,
       "allowBackup": false,
       "adaptiveIcon": {
@@ -20,13 +20,7 @@
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
-        "ACCESS_WIFI_STATE",
-        "BIND_VPN_SERVICE",
-        "FOREGROUND_SERVICE",
-        "RECEIVE_BOOT_COMPLETED",
-        "POST_NOTIFICATIONS",
-        "FOREGROUND_SERVICE_CONNECTED_CAMERA",
-        "FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "ACCESS_WIFI_STATE"
       ],
       "usesCleartextTraffic": false,
       "softwareKeyboardLayoutMode": "adjustResize",
@@ -35,8 +29,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bunker.app",
-      "networkExtension": true,
+      "bundleIdentifier": "app.bunker.ru",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -53,7 +46,7 @@
             "compileSdkVersion": 36,
             "targetSdkVersion": 35,
             "minSdkVersion": 24,
-            "enableMinifyInReleaseBuilds": true
+            "enableMinifyInReleaseBuilds": false
           }
         }
       ],
@@ -61,6 +54,7 @@
       "@sentry/react-native/expo",
       "expo-web-browser",
       "./plugins/withNoBackup",
+      "./plugins/withRemovePermissions",
       "expo-image"
     ],
     "extra": {

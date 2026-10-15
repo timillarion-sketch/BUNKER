@@ -12,7 +12,7 @@
       },
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://62.109.8.183.nip.io",
+        "EXPO_PUBLIC_API_URL": "https://taskkiller.duckdns.org",
         "GRADLE_OPTS": "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain"
       }
     },
@@ -23,7 +23,7 @@
       },
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://62.109.8.183.nip.io",
+        "EXPO_PUBLIC_API_URL": "https://taskkiller.duckdns.org",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
@@ -34,7 +34,7 @@
       },
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://62.109.8.183.nip.io",
+        "EXPO_PUBLIC_API_URL": "https://taskkiller.duckdns.org",
         "EXPO_PUBLIC_N8N_WEBHOOK_URL": "https://timki.app.n8n.cloud/webhook/BunkerV2.4",
         "EXPO_PUBLIC_N8N_CHAT_WEBHOOK_URL": "https://timki.app.n8n.cloud/webhook/BunkerV2.4",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"

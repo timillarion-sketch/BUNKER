@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, ScrollView, Switch, LayoutAnimation, Platform, UIManager, Modal,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Switch, Platform, UIManager, Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,15 +15,11 @@ import { api, clearTokens, storage } from '../core';
 import { ChatStorageService } from '../services/ChatStorageService';
 import { ensureBnkrId, resetBnkrIdCache } from '../services/p2pService';
 import * as Clipboard from 'expo-clipboard';
-import { VpnService } from '../services/VpnService';
-import { parseProxyUri } from '../utils/configParser';
 import { useImageUpload } from '../hooks/useImageUpload';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
 }
-
-type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 
 const PALETTE_COLORS = [
   { name: 'Циан', value: '#00f0ff' },
@@ -57,13 +53,6 @@ export default function ProfileScreen({ navigation }: Props) {
   const [username, setUsername] = useState('');
   const [backendStatus, setBackendStatus] = useState<'online' | 'offline' | 'checking'>('checking');
 
-  const [vpnStatus, setVpnStatus] = useState<ConnectionStatus>('disconnected');
-  const [configUri, setConfigUri] = useState('');
-  const [gatewayExpanded, setGatewayExpanded] = useState(false);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const statusCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const vpn = VpnService.getInstance();
-
   const [notifications, setNotifications] = useState(true);
   const [screenshots, setScreenshots] = useState(false);
   const [userId, setUserId] = useState('');
@@ -75,20 +64,6 @@ export default function ProfileScreen({ navigation }: Props) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const { pickAndUploadImage, isUploading: uploadingAvatar } = useImageUpload();
-
-  const pulse = useCallback(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 0.3, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
-      ]),
-    ).start();
-  }, [pulseAnim]);
-
-  const stopPulse = useCallback(() => {
-    pulseAnim.stopAnimation();
-    pulseAnim.setValue(1);
-  }, [pulseAnim]);
 
   useEffect(() => {
     (async () => {
@@ -102,27 +77,6 @@ export default function ProfileScreen({ navigation }: Props) {
       }
     })();
   }, []);
-
-  useEffect(() => {
-    vpn.loadSavedConfig().then((saved) => {
-      if (saved) setConfigUri(saved.configJson);
-    });
-  }, [vpn]);
-
-  useEffect(() => {
-    if (vpnStatus === 'connecting') pulse();
-    else stopPulse();
-
-    if (statusCheckRef.current) clearInterval(statusCheckRef.current);
-    statusCheckRef.current = setInterval(async () => {
-      const s = await vpn.getStatus();
-      setVpnStatus(s);
-    }, 3000);
-
-    return () => {
-      if (statusCheckRef.current) clearInterval(statusCheckRef.current);
-    };
-  }, [vpnStatus, pulse, stopPulse, vpn]);
 
   useFocusEffect(
     useCallback(() => {
@@ -156,36 +110,6 @@ export default function ProfileScreen({ navigation }: Props) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleConnect = async () => {
-    if (!configUri.trim()) {
-      Alert.alert('Ошибка', 'Введите ключ безопасного шлюза');
-      return;
-    }
-    setVpnStatus('connecting');
-    try {
-      let configJson = configUri.trim();
-      if (configUri.startsWith('vless://') || configUri.startsWith('vmess://') || configUri.startsWith('ss://')) {
-        configJson = parseProxyUri(configUri);
-      }
-      await vpn.connect({ name: 'Bunker VPN', configJson });
-      setVpnStatus('connected');
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Ошибка подключения';
-      Alert.alert('Ошибка шлюза', msg);
-      setVpnStatus('disconnected');
-    }
-  };
-
-  const handleDisconnect = async () => {
-    await vpn.disconnect();
-    setVpnStatus('disconnected');
-  };
-
-  const handleSaveConfig = async () => {
-    await SecureStore.setItemAsync('vpn_config', JSON.stringify({ name: 'Bunker VPN', configJson: configUri }));
-    Alert.alert('Сохранено', 'Ключ безопасного шлюза сохранён');
-  };
-
   const handleSelfDestruct = () => {
     Alert.alert(
       'ПРОТОКОЛ НОЛЬ',
@@ -203,7 +127,6 @@ export default function ProfileScreen({ navigation }: Props) {
             await clearTokens();
             await SecureStore.deleteItemAsync('bunker_access_token');
             await SecureStore.deleteItemAsync('bunker_refresh_token');
-            await SecureStore.deleteItemAsync('vpn_config');
             await ChatStorageService.clearAll();
             await storage.remove('bunker_user_id');
             await AsyncStorage.removeItem('p2p_contacts');
@@ -238,14 +161,6 @@ export default function ProfileScreen({ navigation }: Props) {
       },
     ]);
   };
-
-  const vpnStatusColor = vpnStatus === 'connected' ? theme.colors.success
-    : vpnStatus === 'connecting' ? accent
-    : theme.colors.danger;
-
-  const vpnStatusText = vpnStatus === 'connected' ? 'ПОДКЛЮЧЕНО'
-    : vpnStatus === 'connecting' ? 'ПОДКЛЮЧЕНИЕ...'
-    : 'ОТКЛЮЧЕНО';
 
   const handleAvatarTap = async () => {
     try {
@@ -376,61 +291,6 @@ export default function ProfileScreen({ navigation }: Props) {
             {copied ? '✓ СКОПИРОВАН' : '⎘ КОПИРОВАТЬ'}
           </Text>
         </TouchableOpacity>
-
-        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>БЕЗОПАСНЫЙ ШЛЮЗ</Text>
-        <View style={[styles.card, { borderColor: vpnStatusColor, backgroundColor: theme.colors.card }]}>
-          <View style={styles.gatewayRow}>
-            <View style={[styles.gatewayDot, { backgroundColor: vpnStatusColor }]} />
-            <Text style={[styles.gatewayStatus, { color: vpnStatusColor }]}>{vpnStatusText}</Text>
-            <TouchableOpacity
-              onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setGatewayExpanded(!gatewayExpanded);
-              }}
-              style={styles.gatewayExpandBtn}
-            >
-              <Text style={[styles.gatewayExpandIcon, { color: theme.colors.textMuted }]}>
-                {gatewayExpanded ? '−' : '+'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={[styles.configInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.text }]}
-            value={configUri}
-            onChangeText={setConfigUri}
-            placeholder="vless://... / vmess://... / ss://..."
-            placeholderTextColor={theme.colors.textMuted}
-            multiline
-            textAlignVertical="top"
-          />
-          <View style={styles.gatewayButtons}>
-            <TouchableOpacity
-              style={[styles.gatewayBtn, vpnStatus === 'connected' ? styles.gatewayBtnDisconnect : { backgroundColor: accent }]}
-              onPress={vpnStatus === 'connected' ? handleDisconnect : handleConnect}
-            >
-              <Text style={styles.gatewayBtnText}>
-                {vpnStatus === 'connected' ? 'ОТКЛЮЧИТЬ' : 'ПОДКЛЮЧИТЬ'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.gatewaySaveBtn, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]} onPress={handleSaveConfig}>
-              <Text style={[styles.gatewaySaveText, { color: theme.colors.text }]}>СОХРАНИТЬ</Text>
-            </TouchableOpacity>
-          </View>
-          {gatewayExpanded && (
-            <View style={[styles.gatewayProtocols, { borderTopColor: theme.colors.border }]}>
-              <View style={styles.protocolRow}>
-                <View style={[styles.protocolDot, { backgroundColor: '#00ff88' }]} />
-                <Text style={[styles.protocolLabel, { color: theme.colors.textMuted }]}>VLESS / Reality</Text>
-                <Text style={styles.protocolStatus}>● активен</Text>
-              </View>
-              <View style={styles.protocolRow}>
-                <View style={[styles.protocolDot, { backgroundColor: '#00aaff' }]} />
-                <Text style={[styles.protocolLabel, { color: theme.colors.textMuted }]}>Shadowsocks</Text>
-                <Text style={styles.protocolStatus}>○ ожидание</Text>
-              </View>
-            </View>
-          )}
-        </View>
 
         <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>НАСТРОЙКИ</Text>
         <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
@@ -694,100 +554,6 @@ const styles = StyleSheet.create({
     width: 32, height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  gatewayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  gatewayDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  gatewayStatus: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 2,
-  },
-  configInput: {
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 12,
-    fontSize: 12,
-    fontFamily: 'monospace',
-    minHeight: 80,
-    marginBottom: 12,
-  },
-  gatewayButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  gatewayBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  gatewayBtnDisconnect: {
-    backgroundColor: '#ff3366',
-  },
-  gatewayBtnText: {
-    color: '#000',
-    fontWeight: '800',
-    fontSize: 12,
-    letterSpacing: 1,
-  },
-  gatewaySaveBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  gatewaySaveText: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  gatewayExpandBtn: {
-    marginLeft: 'auto',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gatewayExpandIcon: {
-    fontSize: 22,
-    fontWeight: '300',
-    lineHeight: 24,
-  },
-  gatewayProtocols: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    gap: 8,
-  },
-  protocolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  protocolDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  protocolLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    flex: 1,
-  },
-  protocolStatus: {
-    fontSize: 11,
-    color: '#606080',
-    fontWeight: '600',
   },
   toggleRow: {
     flexDirection: 'row',

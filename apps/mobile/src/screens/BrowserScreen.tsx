@@ -1,11 +1,10 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Dimensions, Switch, Animated } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccent } from '../core/AccentContext';
 import { theme as baseTheme } from '../theme';
 import { TAB_BAR_HEIGHT } from '../navigation/AppNavigator';
-import { useVpnProxy } from '../hooks/useVpnProxy';
 import { checkDnsLeak } from '../utils/dnsLeakDetector';
 import { WEBVIEW_INJECTED_JS, isUrlSafe, NEURAL_ANALYSIS_JS, PAGE_CONTENT_EXTRACT_JS } from '../utils/webViewSecurity';
 
@@ -63,7 +62,6 @@ export default function BrowserScreen() {
   const [progress, setProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const vpnProxy = useVpnProxy();
   const [currentIp, setCurrentIp] = useState<string>('');
   const [isCheckingIp, setIsCheckingIp] = useState(false);
   const [neuralEnabled, setNeuralEnabled] = useState(false);
@@ -226,9 +224,6 @@ export default function BrowserScreen() {
       }
       return true;
     },
-    ...(vpnProxy.isVpnActive && Platform.OS === 'android'
-      ? { proxyHost: vpnProxy.proxyHost, proxyPort: vpnProxy.proxyPort }
-      : {}),
   };
 
   return (
